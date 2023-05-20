@@ -2,7 +2,10 @@
 
 use std::collections::HashMap;
 
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{
+	prelude::*,
+	window::{ExitCondition, PresentMode},
+};
 
 const WINDOW_SIZE: f32 = 600.;
 
@@ -33,9 +36,8 @@ enum PieceColor {
 
 #[derive(Debug, Clone, Copy, Component, PartialEq)]
 pub struct Piece {
-	row: u8,
-	col: u8,
-	// selected: bool,
+	row: Option<u8>,
+	col: Option<u8>,
 	piece: Pieces,
 	color: PieceColor,
 }
@@ -43,8 +45,8 @@ pub struct Piece {
 impl Default for Piece {
 	fn default() -> Self {
 		Self {
-			row: 0,
-			col: 0,
+			row: None,
+			col: None,
 			color: PieceColor::None,
 			piece: Pieces::None,
 		}
@@ -54,9 +56,9 @@ impl Default for Piece {
 fn load_position_from_fen(fen: String) -> [Piece; 64] {
 	let mut board: [Piece; 64] = [Piece {
 		piece: Pieces::None,
-		color: PieceColor::None, // selected: false,
-		row: 0,
-		col: 0,
+		color: PieceColor::None,
+		row: None,
+		col: None,
 	}; 64];
 
 	let mut piece_type_from_symbol: HashMap<char, Pieces> = HashMap::new();
@@ -101,9 +103,8 @@ fn load_position_from_fen(fen: String) -> [Piece; 64] {
 			board[(row * 8 + col) as usize] = Piece {
 				piece: piece_type,
 				color: piece_color,
-				// selected: false,
-				row: row as u8,
-				col: col as u8,
+				row: Some(row as u8),
+				col: Some(col as u8),
 			}
 		}
 	}
@@ -135,7 +136,7 @@ fn main() {
 		.insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
 		.add_plugins(DefaultPlugins.set(WindowPlugin {
 			primary_window: Some(Window {
-				title: "snake".into(),
+				title: "chess".into(),
 				resolution: (WINDOW_SIZE, WINDOW_SIZE).into(),
 				present_mode: PresentMode::AutoVsync,
 				// Tells wasm to resize the window according to the available canvas
@@ -146,13 +147,13 @@ fn main() {
 			}),
 			..Default::default()
 		}))
-		.insert_resource(Msaa::Sample4)
+		.insert_resource(Msaa::Sample8)
 		.init_resource::<BoardResource>()
 		.init_resource::<SelectedPiece>()
 		.add_startup_system(setup_camera)
 		.add_startup_system(spawn_board)
 		.add_startup_system(first_draw_board)
-		.add_system(get_piece_click)
+		.add_system(move_piece_system)
 		.run();
 }
 
@@ -217,10 +218,8 @@ fn first_draw_board(
 					texture_atlas: texture_atlas_handle,
 					transform: Transform {
 						translation: Vec3::new(
-							//x
-							-((WINDOW_SIZE / 2.) - (col as f32 * SQUARE_SIZE) - (SQUARE_SIZE / 2.)),
-							//y
-							-((WINDOW_SIZE / 2.) - (row as f32 * SQUARE_SIZE) - (SQUARE_SIZE / 2.)),
+							col as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.),
+							row as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.),
 							0.0,
 						),
 						scale: Vec3::splat(WINDOW_SIZE / 2500.),
@@ -232,19 +231,18 @@ fn first_draw_board(
 				.insert(Piece {
 					piece: el.piece,
 					color: el.color,
-					// selected: false,
-					row: row as u8,
-					col: col as u8,
+					row: Some(row as u8),
+					col: Some(col as u8),
 				});
 		}
 	}
 }
 
-fn get_piece_click(
+fn move_piece_system(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window>,
-	board: ResMut<BoardResource>,
-	mut selected_peice: ResMut<SelectedPiece>,
+	mut board: ResMut<BoardResource>,
+	mut selected_piece: ResMut<SelectedPiece>,
 	mut pieces: Query<(&Piece, &mut Transform)>,
 ) {
 	let window = windows.get_single().unwrap();
@@ -257,39 +255,56 @@ fn get_piece_click(
 			let index = (row * 8 + col) as usize;
 
 			let clicked_piece = board.board[index];
-			let mut selected_peice = selected_peice.0;
 
-			for (piece, mut transform) in pieces.iter_mut() {
-				if piece.piece == Pieces::King && piece.color == PieceColor::White {
-					transform.translation.x = col as f32 * SQUARE_SIZE;
-					transform.translation.y = 0 as f32 * SQUARE_SIZE;
+			// board.board.iter().for_each(|x| println!("{:?}", x));
+			if selected_piece.0.is_none() && clicked_piece.piece != Pieces::None {
+				selected_piece.0 = Some(clicked_piece);
+			};
+
+			if selected_piece.0 != Some(clicked_piece) && selected_piece.0.is_some() {
+				for (piece, mut transform) in pieces.iter_mut() {
+					if Some(*piece) == selected_piece.0 {
+						transform.translation.x =
+							col as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+						transform.translation.y =
+							row as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+					}
 				}
-				// if Some(piece) == Some(&Piece { }) {
-				// 	transform.translation.x = col as f32 * SQUARE_SIZE;
-				// 	transform.translation.y = 0 as f32 * SQUARE_SIZE;
-				// }
+
+				if let Some(piece) = selected_piece.0 {
+					let old_index = (piece.row.unwrap_or(0) * 8 + piece.col.unwrap_or(0)) as usize;
+					board.board[old_index] = Piece {
+						..Default::default()
+					};
+					board.board[index] = piece;
+					board.board[index].row = Some(row);
+					board.board[index].col = Some(col);
+				}
+
+				selected_piece.0 = None;
 			}
-
-			// if clicked_piece.piece == Pieces::None {
-			// 	selected_peice = None;
-			// }
-			// if clicked_piece.piece != Pieces::None && selected_peice == None {
-			// if selected_peice == None {
-			// 	selected_peice = Some(clicked_piece);
-			// };
-
-			// println!("{:?}", selected_peice);
-
-			// if selected_peice != Some(clicked_piece) && clicked_piece.piece == Pieces::None {
-			// 	for (piece, mut transform) in pieces.iter_mut() {
-			// 		if Some(piece) == selected_peice.as_ref() {
-			// 			transform.translation.x = col as f32 * SQUARE_SIZE;
-			// 			transform.translation.y = 0 as f32 * SQUARE_SIZE;
-			// 		}
-			// 	}
-			//
-			// 	selected_peice = None;
-			// }
 		}
+	}
+}
+
+fn print_board(board: [Piece; 64]) {
+	for row in (0..8).rev() {
+		print!("|");
+		for col in 0..8 {
+			let index = (row * 8 + col) as usize;
+			match board[index].piece {
+				Pieces::None => print!(" "),
+				piece => print!(
+					"{}",
+					format!("{:?}", piece)
+						.chars()
+						.next()
+						.unwrap()
+						.to_lowercase()
+				),
+			}
+			print!("|");
+		}
+		println!();
 	}
 }
