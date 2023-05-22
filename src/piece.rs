@@ -2,15 +2,49 @@
 
 use bevy::prelude::*;
 
-use crate::{components::{SelectedPiece, HighlightSquare, Turn, MoveEvent, MovedSquare, TakeEvent, PieceColor, Piece, Pieces, BoardResource}, WINDOW_SIZE, SQUARE_SIZE, BOARD_SIZE};
+use crate::{
+	components::{
+		BoardResource, HighlightSquare, MoveEvent, MovedSquare, Piece, PieceColor, Pieces,
+		SelectedPiece, TakeEvent, Turn,
+	},
+	BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE,
+};
 
 pub struct PiecePlugin;
 
 impl Plugin for PiecePlugin {
 	fn build(&self, app: &mut App) {
-		app.add_system(move_piece_system)
+		app.add_system(drag_piece_system)
+			// .add_system(move_piece_system)
 			.add_system(highlight_moved_system)
 			.add_system(highlight_selected_system);
+	}
+}
+
+pub fn drag_piece_system(
+	mouse_button_input: Res<Input<MouseButton>>,
+	windows: Query<&Window>,
+	mut board: ResMut<BoardResource>,
+	mut selected_piece: ResMut<SelectedPiece>,
+	mut pieces: Query<(&mut Piece, &mut Transform, Entity)>,
+	mut next_state: ResMut<NextState<Turn>>,
+	current_state: Res<State<Turn>>,
+	mut commands: Commands,
+	mut ev_move: EventWriter<MoveEvent>,
+	mut ev_take: EventWriter<TakeEvent>,
+) {
+	let window = windows.get_single().unwrap();
+
+	if let Some(position) = window.cursor_position() {
+		let col = ((position[0] / 75.).floor()) as u8;
+		let row = ((position[1] / 75.).floor()) as u8;
+
+		let index = (row * BOARD_SIZE as u8 + col) as usize;
+
+		let clicked_piece = board.board[index];
+		if mouse_button_input.just_pressed(MouseButton::Left) {}
+		if mouse_button_input.pressed(MouseButton::Left) {}
+		if mouse_button_input.just_released(MouseButton::Left) {}
 	}
 }
 

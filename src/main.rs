@@ -1,6 +1,6 @@
 #![allow(dead_code, unused)]
 
-use bevy::{prelude::*, sprite::Anchor, text::Text2dBounds, window::PresentMode};
+use bevy::{prelude::*, sprite::Anchor, window::PresentMode};
 
 use components::{
 	BoardResource, HighlightSquare, MoveEvent, MovedSquare, Piece, SelectedPiece, TakeEvent, Turn,
@@ -20,7 +20,7 @@ const BOARD_SIZE: i32 = 8;
 
 fn main() {
 	App::new()
-		.insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+		// .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
 		.add_plugins(DefaultPlugins.set(WindowPlugin {
 			primary_window: Some(Window {
 				title: "chess".into(),
