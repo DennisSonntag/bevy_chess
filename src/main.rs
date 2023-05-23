@@ -5,7 +5,7 @@ use bevy_prototype_lyon::prelude::*;
 
 use components::{
 	BoardResource, HighlightSquare, HoverEvent, HoverSquare, MoveEvent, MovedSquare, Piece,
-	SelectedPiece, TakeEvent, Turn,
+	SelectedPiece, TakeEvent, Turn, MoveData, LegalMoveEvent,
 };
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
@@ -38,10 +38,12 @@ fn main() {
 		.insert_resource(Msaa::Sample8)
 		.init_resource::<BoardResource>()
 		.init_resource::<SelectedPiece>()
+		.init_resource::<MoveData>()
 		.add_state::<Turn>()
 		.add_event::<MoveEvent>()
 		.add_event::<TakeEvent>()
 		.add_event::<HoverEvent>()
+		.add_event::<LegalMoveEvent>()
 		.add_startup_system(setup_camera)
 		.add_startup_system(spawn_board_system)
 		.add_startup_system(spawn_piece_sprites_system)

@@ -17,6 +17,14 @@ pub struct MoveEvent {
 	pub col: Option<u8>,
 }
 
+pub struct LegalMoveEvent(pub Option<Vec<i32>>);
+
+#[derive(Debug, Clone, Copy, Component, PartialEq)]
+pub struct LegalMoveMarker;
+
+
+
+
 #[derive(Debug, Clone, Copy, Component, PartialEq)]
 pub struct MovedSquare;
 
@@ -27,7 +35,6 @@ pub struct HoverEvent {
 
 #[derive(Debug, Clone, Copy, Component, PartialEq)]
 pub struct HoverSquare;
-
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Pieces {
@@ -160,5 +167,46 @@ pub struct SelectedPiece(pub Option<Piece>);
 impl FromWorld for SelectedPiece {
 	fn from_world(_: &mut World) -> Self {
 		Self(None)
+	}
+}
+
+#[derive(Resource, Debug, Clone)]
+pub struct MoveData {
+	pub num_squares_to_edge: HashMap<usize, Vec<i32>>,
+	pub direction_offsets: [i32; 8],
+}
+
+impl FromWorld for MoveData {
+	fn from_world(_: &mut World) -> Self {
+		let mut num_squares_to_edge= HashMap::new();
+		for row in 0..BOARD_SIZE {
+			for col in 0..BOARD_SIZE {
+				let num_north = 7 - col;
+				let num_south = col;
+				let num_west = row;
+				let num_east = 7 - row;
+
+				let index = (col * BOARD_SIZE + row) as usize;
+
+				num_squares_to_edge.insert(
+					index,
+					vec![
+						num_north,
+						num_south,
+						num_west,
+						num_east,
+						num_north.min(num_west),
+						num_south.min(num_east),
+						num_north.min(num_east),
+						num_south.min(num_west),
+					],
+				);
+			}
+		}
+
+		Self {
+			num_squares_to_edge,
+			direction_offsets: [8, -8, -1, 1, 7, -7, 9, -9],
+		}
 	}
 }
