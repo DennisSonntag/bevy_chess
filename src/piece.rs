@@ -25,16 +25,6 @@ impl Plugin for PiecePlugin {
 	}
 }
 
-fn is_out_of_bounds(index: usize, offset: i32) -> bool {
-	let row = (index / 8) as i32;
-	let col = (index % 8) as i32;
-
-	let new_row = row + offset / 8;
-	let new_col = col + offset % 8;
-
-	new_row < 0 || new_row >= 8 || new_col < 0 || new_col >= 8
-}
-
 fn get_legal_moves(
 	squares_to_edge: HashMap<usize, Vec<i32>>,
 	direction_offsets: [i32; 8],
@@ -54,7 +44,8 @@ fn get_legal_moves(
 				let direction_index = direction_index as usize;
 				for n in 0..squares_to_edge.get(&(start_square as usize)).unwrap()[direction_index]
 				{
-					let target_square = (start_square + direction_offsets[direction_index]);
+					let target_square =
+						(start_square + direction_offsets[direction_index] * (n + 1));
 					let piece_on_target_square = board[target_square as usize];
 
 					// Blocked by friendly piece, so can't move any further in this direction
@@ -74,9 +65,25 @@ fn get_legal_moves(
 			}
 		}
 		Pieces::Knight => {
-			let knight_moves = [15, 17, 10, -6, -15, -17, -10, 6, 15, 17];
-			for i in knight_moves {
-				moves.push(start_square + i);
+			let directions: [(i32, i32); 8] = [
+				(1, 2),
+				(2, 1),
+				(-1, 2),
+				(-2, 1),
+				(1, -2),
+				(2, -1),
+				(-1, -2),
+				(-2, -1),
+			];
+
+			let calc_idx = |row: i32, col: i32| (row * BOARD_SIZE + col) as usize;
+			for &(dx, dy) in &directions {
+				let new_row = piece.row.unwrap_or(0) as i32 + dx;
+				let new_col = piece.col.unwrap_or(0) as i32 + dy;
+
+				if (0..8).contains(&new_row) && (0..8).contains(&new_col) {
+					moves.push(calc_idx(new_row, new_col) as i32);
+				}
 			}
 		}
 		Pieces::Pawn => {
@@ -113,25 +120,29 @@ fn get_legal_moves(
 			}
 		}
 		Pieces::King => {
-			for i in direction_offsets {
-				let target_square = (start_square + i);
-				let piece_on_target_square = board[target_square as usize];
+			for (idx, val) in direction_offsets.iter().enumerate() {
+				if squares_to_edge.get(&(start_square as usize)).unwrap()[idx] > 0 {
+					let target_square = (start_square + val);
+					let piece_on_target_square = board[target_square as usize];
 
-				// Blocked by friendly piece, so can't move any further in this direction
-				// if (piece_on_target_square.color == turn_color) {
-				// 	break;
-				// }
-				moves.push(target_square);
-
-				// // Can't move any further in this directoin after capturing opponent's piece
-				// if (piece_on_target_square.color != turn_color
-				// 	&& piece_on_target_square.color != PieceColor::None)
-				// {
-				// 	break;
-				// }
+					// Blocked by friendly piece, so can't move any further in this direction
+					// if (piece_on_target_square.color == turn_color) {
+					// 	continue;
+					// 	// break;
+					// }
+					// if (piece_on_target_square.color == PieceColor::None) {
+					// }
+					moves.push(target_square);
+					// Can't move any further in this directoin after capturing opponent's piece
+					// if (piece_on_target_square.color != turn_color
+					// 	&& piece_on_target_square.color != PieceColor::None)
+					// {
+					// 	break;
+					// }
+				}
 			}
 		}
-		Pieces::None => todo!(),
+		Pieces::None => unreachable!(),
 	}
 
 	moves
@@ -209,6 +220,7 @@ pub fn move_piece_system(
 					selected_index as i32,
 					current_state.0.clone(),
 				);
+
 				ev_legal.send(LegalMoveEvent(Some(legal_moves.clone())));
 				let clicked_index = row * BOARD_SIZE as u8 + col;
 
@@ -267,15 +279,20 @@ pub fn move_piece_system(
 							piece.row = Some(row);
 							piece.col = Some(col);
 
-							let old_index = (piece.row.unwrap_or(0) * BOARD_SIZE as u8
-								+ piece.col.unwrap_or(0)) as usize;
+							let old_index = (selected.row.unwrap_or(0) * BOARD_SIZE as u8
+								+ selected.col.unwrap_or(0)) as usize;
+
 							board.board[old_index] = Piece {
+								color: PieceColor::None,
+								piece: Pieces::None,
 								..Default::default()
 							};
 
 							board.board[index] = *piece;
 							board.board[index].row = Some(row);
 							board.board[index].col = Some(col);
+
+							// dbg!(board.board[index]);
 
 							ev_move.send(MoveEvent {
 								row: Some(row),
