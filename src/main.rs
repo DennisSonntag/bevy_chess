@@ -1,9 +1,11 @@
 #![allow(dead_code, unused)]
 
 use bevy::{prelude::*, sprite::Anchor, window::PresentMode};
+use bevy_prototype_lyon::prelude::*;
 
 use components::{
-	BoardResource, HighlightSquare, MoveEvent, MovedSquare, Piece, SelectedPiece, TakeEvent, Turn,
+	BoardResource, HighlightSquare, HoverEvent, HoverSquare, MoveEvent, MovedSquare, Piece,
+	SelectedPiece, TakeEvent, Turn,
 };
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
@@ -32,12 +34,14 @@ fn main() {
 			}),
 			..Default::default()
 		}))
+		.add_plugin(ShapePlugin)
 		.insert_resource(Msaa::Sample8)
 		.init_resource::<BoardResource>()
 		.init_resource::<SelectedPiece>()
 		.add_state::<Turn>()
 		.add_event::<MoveEvent>()
 		.add_event::<TakeEvent>()
+		.add_event::<HoverEvent>()
 		.add_startup_system(setup_camera)
 		.add_startup_system(spawn_board_system)
 		.add_startup_system(spawn_piece_sprites_system)
@@ -138,7 +142,8 @@ fn spawn_piece_sprites_system(
 	board: ResMut<BoardResource>,
 ) {
 	// let texture_handle = asset_server.load("pieces.png");
-	let texture_handle = asset_server.load("pieces3.png");
+	// let texture_handle = asset_server.load("pieces3.png");
+	let texture_handle = asset_server.load("pieces5.png");
 
 	for (i, el) in board.board.iter().enumerate() {
 		if el.piece as i32 != 0 {
@@ -219,6 +224,32 @@ fn spawn_piece_sprites_system(
 			..default()
 		},))
 		.insert(MovedSquare);
+
+	// Hover ------------------------------------------------
+	let shape = shapes::RegularPolygon {
+		sides: 4,
+		..shapes::RegularPolygon::default()
+	};
+
+	commands
+		.spawn((
+			ShapeBundle {
+				path: GeometryBuilder::build_as(&shape),
+				transform: Transform {
+					translation: Vec3::new(
+						-(WINDOW_SIZE / 2.) + ((0. - 0.5) * SQUARE_SIZE),
+						-(WINDOW_SIZE / 2.) + ((0. - 0.5) * SQUARE_SIZE),
+						5.0,
+					),
+					scale: Vec3::new(SQUARE_SIZE * 0.66, SQUARE_SIZE * 0.66, 0.0),
+					..default()
+				},
+				..default()
+			},
+			Fill::color(Color::NONE),
+			Stroke::new(Color::WHITE, 0.09),
+		))
+		.insert(HoverSquare);
 }
 
 // fn print_board(board: [Piece; 64]) {

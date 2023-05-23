@@ -1,11 +1,11 @@
-#![allow(dead_code)]
+#![allow(dead_code, unused)]
 
 use bevy::prelude::*;
 
 use crate::{
 	components::{
-		BoardResource, HighlightSquare, MoveEvent, MovedSquare, Piece, PieceColor, Pieces,
-		SelectedPiece, TakeEvent, Turn,
+		BoardResource, HighlightSquare, HoverEvent, HoverSquare, MoveEvent, MovedSquare, Piece,
+		PieceColor, Pieces, SelectedPiece, TakeEvent, Turn,
 	},
 	BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE,
 };
@@ -14,37 +14,10 @@ pub struct PiecePlugin;
 
 impl Plugin for PiecePlugin {
 	fn build(&self, app: &mut App) {
-		app.add_system(drag_piece_system)
-			// .add_system(move_piece_system)
+		app.add_system(move_piece_system)
 			.add_system(highlight_moved_system)
-			.add_system(highlight_selected_system);
-	}
-}
-
-pub fn drag_piece_system(
-	mouse_button_input: Res<Input<MouseButton>>,
-	windows: Query<&Window>,
-	mut board: ResMut<BoardResource>,
-	mut selected_piece: ResMut<SelectedPiece>,
-	mut pieces: Query<(&mut Piece, &mut Transform, Entity)>,
-	mut next_state: ResMut<NextState<Turn>>,
-	current_state: Res<State<Turn>>,
-	mut commands: Commands,
-	mut ev_move: EventWriter<MoveEvent>,
-	mut ev_take: EventWriter<TakeEvent>,
-) {
-	let window = windows.get_single().unwrap();
-
-	if let Some(position) = window.cursor_position() {
-		let col = ((position[0] / 75.).floor()) as u8;
-		let row = ((position[1] / 75.).floor()) as u8;
-
-		let index = (row * BOARD_SIZE as u8 + col) as usize;
-
-		let clicked_piece = board.board[index];
-		if mouse_button_input.just_pressed(MouseButton::Left) {}
-		if mouse_button_input.pressed(MouseButton::Left) {}
-		if mouse_button_input.just_released(MouseButton::Left) {}
+			.add_system(highlight_selected_system)
+			.add_system(highlight_hover_system);
 	}
 }
 
@@ -58,19 +31,19 @@ pub fn move_piece_system(
 	current_state: Res<State<Turn>>,
 	mut commands: Commands,
 	mut ev_move: EventWriter<MoveEvent>,
+	mut ev_hover: EventWriter<HoverEvent>,
 	mut ev_take: EventWriter<TakeEvent>,
 ) {
 	let window = windows.get_single().unwrap();
 
 	if let Some(position) = window.cursor_position() {
+		let col = ((position[0] / 75.).floor()) as u8;
+		let row = ((position[1] / 75.).floor()) as u8;
+
+		let index = (row * BOARD_SIZE as u8 + col) as usize;
+
+		let clicked_piece = board.board[index];
 		if mouse_button_input.just_pressed(MouseButton::Left) {
-			let col = ((position[0] / 75.).floor()) as u8;
-			let row = ((position[1] / 75.).floor()) as u8;
-
-			let index = (row * BOARD_SIZE as u8 + col) as usize;
-
-			let clicked_piece = board.board[index];
-
 			if Some(clicked_piece) == selected_piece.0 && selected_piece.0.is_some() {
 				selected_piece.0 = None;
 				ev_move.send(MoveEvent {
@@ -84,8 +57,37 @@ pub fn move_piece_system(
 					row: None,
 					col: None,
 				});
+				ev_hover.send(HoverEvent {
+					row: None,
+					col: None,
+				});
 			};
-
+		}
+		if mouse_button_input.pressed(MouseButton::Left) {
+			if selected_piece.0.is_some() && clicked_piece.color != current_state.0 {
+				ev_hover.send(HoverEvent {
+					row: Some(row),
+					col: Some(col),
+				});
+			} else if clicked_piece.color == current_state.0 {
+				ev_hover.send(HoverEvent {
+					row: None,
+					col: None,
+				});
+			}
+			for (piece, mut transform, _) in pieces.iter_mut() {
+				if Some(*piece) == selected_piece.0 {
+					transform.translation.x = position.x - (WINDOW_SIZE / 2.);
+					transform.translation.y = position.y - (WINDOW_SIZE / 2.);
+					transform.translation.z = 30.;
+				}
+			}
+		}
+		if mouse_button_input.just_released(MouseButton::Left) {
+			ev_hover.send(HoverEvent {
+				row: None,
+				col: None,
+			});
 			if selected_piece.0 != Some(clicked_piece)
 				&& selected_piece.0.is_some()
 				&& clicked_piece.color != current_state.0
@@ -96,6 +98,7 @@ pub fn move_piece_system(
 							col as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
 						transform.translation.y =
 							row as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+						transform.translation.z = 2.;
 						piece.row = Some(row);
 						piece.col = Some(col);
 
@@ -122,12 +125,26 @@ pub fn move_piece_system(
 						ev_take.send(TakeEvent);
 					}
 				}
-
 				selected_piece.0 = None;
 				next_state.set(match current_state.0 {
 					Turn::White => Turn::Black,
 					Turn::Black => Turn::White,
 				});
+			} else if selected_piece.0.is_some()
+				&& (selected_piece.0 == Some(clicked_piece)
+					|| clicked_piece.color == current_state.0)
+			{
+				for (piece, mut transform, _) in pieces.iter_mut() {
+					if Some(*piece) == selected_piece.0 {
+						if let (Some(row), Some(col)) = (piece.row, piece.col) {
+							transform.translation.x =
+								col as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+							transform.translation.y =
+								row as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+							transform.translation.z = 2.;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -168,6 +185,26 @@ pub fn highlight_moved_system(
 			moved_square.1.translation.x =
 				-1. * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
 			moved_square.1.translation.y =
+				-1. * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+		}
+	}
+}
+
+pub fn highlight_hover_system(
+	mut hover_square: Query<(&HoverSquare, &mut Transform)>,
+	mut ev_move: EventReader<HoverEvent>,
+) {
+	let mut hovering_square = hover_square.get_single_mut().unwrap();
+	for i in ev_move.iter() {
+		if let (Some(row), Some(col)) = (i.row, i.col) {
+			hovering_square.1.translation.x =
+				col as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+			hovering_square.1.translation.y =
+				row as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+		} else {
+			hovering_square.1.translation.x =
+				-1. * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+			hovering_square.1.translation.y =
 				-1. * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
 		}
 	}

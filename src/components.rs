@@ -20,6 +20,15 @@ pub struct MoveEvent {
 #[derive(Debug, Clone, Copy, Component, PartialEq)]
 pub struct MovedSquare;
 
+pub struct HoverEvent {
+	pub row: Option<u8>,
+	pub col: Option<u8>,
+}
+
+#[derive(Debug, Clone, Copy, Component, PartialEq)]
+pub struct HoverSquare;
+
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Pieces {
 	None,
