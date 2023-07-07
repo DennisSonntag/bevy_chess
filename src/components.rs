@@ -1,4 +1,4 @@
-#![allow(dead_code, unused)]
+#![allow(dead_code, unused, clippy::cast_sign_loss)]
 
 use bevy::prelude::*;
 use std::collections::HashMap;
@@ -13,30 +13,27 @@ pub struct BoardResource {
 pub struct TakeEvent;
 
 pub struct MoveEvent {
-	pub row: Option<u8>,
-	pub col: Option<u8>,
+	pub row: Option<i8>,
+	pub col: Option<i8>,
 }
 
-pub struct LegalMoveEvent(pub Option<Vec<i32>>);
+pub struct LegalMoveEvent(pub Option<Vec<i8>>);
 
-#[derive(Debug, Clone, Copy, Component, PartialEq)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct LegalMoveMarker;
 
-
-
-
-#[derive(Debug, Clone, Copy, Component, PartialEq)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct MovedSquare;
 
 pub struct HoverEvent {
-	pub row: Option<u8>,
-	pub col: Option<u8>,
+	pub row: Option<i8>,
+	pub col: Option<i8>,
 }
 
-#[derive(Debug, Clone, Copy, Component, PartialEq)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct HoverSquare;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pieces {
 	None,
 	King,
@@ -47,20 +44,20 @@ pub enum Pieces {
 	Pawn,
 }
 
-#[derive(Debug, Clone, Copy, Component, PartialEq)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct HighlightSquare;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PieceColor {
 	White,
 	Black,
 	None,
 }
 
-#[derive(Debug, Clone, Copy, Component, PartialEq)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct Piece {
-	pub row: Option<u8>,
-	pub col: Option<u8>,
+	pub row: Option<i8>,
+	pub col: Option<i8>,
 	pub piece: Pieces,
 	pub color: PieceColor,
 }
@@ -87,22 +84,21 @@ impl PartialEq<Turn> for PieceColor {
 	fn eq(&self, other: &Turn) -> bool {
 		matches!(
 			(self, other),
-			(PieceColor::White, Turn::White) | (PieceColor::Black, Turn::Black)
+			(Self::White, Turn::White) | (Self::Black, Turn::Black)
 		)
 	}
 }
 
 impl FromWorld for BoardResource {
 	fn from_world(_: &mut World) -> Self {
-		let board = load_position_from_fen(String::from(
-			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-		));
+		let board =
+			load_position_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-		BoardResource { board }
+		Self { board }
 	}
 }
 
-fn load_position_from_fen(fen: String) -> [Piece; 64] {
+fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 	let mut board: [Piece; 64] = [Piece {
 		piece: Pieces::None,
 		color: PieceColor::None,
@@ -121,15 +117,16 @@ fn load_position_from_fen(fen: String) -> [Piece; 64] {
 	let fen_data: Vec<&str> = fen.split(' ').collect();
 	let fen_board: Vec<&str> = fen_data[0].split('/').collect();
 
-	let mut col: i32 = 0;
-	let mut row: i32 = BOARD_SIZE;
+	let mut col: i8 = 0;
+	let mut row: i8 = BOARD_SIZE ;
 
 	for row_data in fen_board {
 		col = -1;
+		// col = 0;
 		row -= 1;
 		for i in row_data.chars() {
 			if i.is_ascii_digit() {
-				col += i as i32;
+				col += i as i8;
 				if col >= 7 {
 					continue;
 				}
@@ -144,16 +141,19 @@ fn load_position_from_fen(fen: String) -> [Piece; 64] {
 				PieceColor::None
 			};
 
-			let lower_char = &i.to_lowercase().to_string().chars().next().unwrap();
-			let mut piece_type = Pieces::None;
-			if piece_type_from_symbol.contains_key(lower_char) {
-				piece_type = *piece_type_from_symbol.get(lower_char).unwrap();
-			}
+			let lower_char = &i.to_lowercase().to_string().chars().next().expect("could not get first lowercase character");
+
+			let mut piece_type = if piece_type_from_symbol.contains_key(lower_char) {
+				*piece_type_from_symbol.get(lower_char).expect("value with key lower_char does not exist")
+			} else {
+				Pieces::None
+			};
+
 			board[(row * BOARD_SIZE + col) as usize] = Piece {
 				piece: piece_type,
 				color: piece_color,
-				row: Some(row as u8),
-				col: Some(col as u8),
+				row: Some(row),
+				col: Some(col),
 			}
 		}
 	}
@@ -172,13 +172,13 @@ impl FromWorld for SelectedPiece {
 
 #[derive(Resource, Debug, Clone)]
 pub struct MoveData {
-	pub num_squares_to_edge: HashMap<usize, Vec<i32>>,
-	pub direction_offsets: [i32; 8],
+	pub num_squares_to_edge: HashMap<usize, Vec<i8>>,
+	pub direction_offsets: [i8; 8],
 }
 
 impl FromWorld for MoveData {
 	fn from_world(_: &mut World) -> Self {
-		let mut num_squares_to_edge= HashMap::new();
+		let mut num_squares_to_edge = HashMap::new();
 		for row in 0..BOARD_SIZE {
 			for col in 0..BOARD_SIZE {
 				let num_north = 7 - col;

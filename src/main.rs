@@ -18,7 +18,7 @@ const WINDOW_SIZE: f32 = 600.;
 
 const SQUARE_SIZE: f32 = WINDOW_SIZE / 8.;
 
-const BOARD_SIZE: i32 = 8;
+const BOARD_SIZE: i8 = 8;
 
 fn main() {
 	App::new()
@@ -149,8 +149,8 @@ fn spawn_piece_sprites_system(
 
 	for (i, el) in board.board.iter().enumerate() {
 		if el.piece as i32 != 0 {
-			let row = i / BOARD_SIZE as usize;
-			let col = i % BOARD_SIZE as usize;
+			let row = i as i8 / BOARD_SIZE as i8;
+			let col = i as i8 % BOARD_SIZE as i8;
 
 			let texture_atlas = TextureAtlas::from_grid(
 				texture_handle.clone(),
@@ -183,8 +183,8 @@ fn spawn_piece_sprites_system(
 				.insert(Piece {
 					piece: el.piece,
 					color: el.color,
-					row: Some(row as u8),
-					col: Some(col as u8),
+					row: Some(row),
+					col: Some(col),
 				});
 		}
 	}

@@ -1,4 +1,12 @@
-#![allow(dead_code, unused)]
+#![allow(
+	dead_code,
+	unused,
+	clippy::suspicious_operation_groupings,
+	clippy::module_name_repetitions,
+	clippy::cast_sign_loss,
+	clippy::too_many_arguments,
+	clippy::too_many_lines
+)]
 
 use std::collections::HashMap;
 
@@ -26,13 +34,13 @@ impl Plugin for PiecePlugin {
 }
 
 fn get_legal_moves(
-	squares_to_edge: HashMap<usize, Vec<i32>>,
-	direction_offsets: [i32; 8],
-	board: [Piece; 64],
-	start_square: i32,
-	turn_color: Turn,
-) -> Vec<i32> {
-	let mut moves: Vec<i32> = Vec::new();
+	squares_to_edge: &HashMap<usize, Vec<i8>>,
+	direction_offsets: [i8; 8],
+	board: &[Piece; 64],
+	start_square: i8,
+	turn_color: &Turn,
+) -> Vec<i8> {
+	let mut moves: Vec<i8> = Vec::new();
 	let piece = board[start_square as usize];
 	match piece.piece {
 		Pieces::Queen | Pieces::Rook | Pieces::Bishop => {
@@ -42,21 +50,23 @@ fn get_legal_moves(
 
 			for direction_index in start_dir_index..end_dir_index {
 				let direction_index = direction_index as usize;
-				for n in 0..squares_to_edge.get(&(start_square as usize)).unwrap()[direction_index]
+				for n in 0..squares_to_edge
+					.get(&(start_square as usize))
+					.expect("squares to edge for start square not found")[direction_index]
 				{
 					let target_square =
 						(start_square + direction_offsets[direction_index] * (n + 1));
 					let piece_on_target_square = board[target_square as usize];
 
 					// Blocked by friendly piece, so can't move any further in this direction
-					if (piece_on_target_square.color == turn_color) {
+					if (&piece_on_target_square.color == turn_color) {
 						break;
 					}
 
 					moves.push(target_square);
 
 					// Can't move any further in this directoin after capturing opponent's piece
-					if (piece_on_target_square.color != turn_color
+					if (&piece_on_target_square.color != turn_color
 						&& piece_on_target_square.color != PieceColor::None)
 					{
 						break;
@@ -65,7 +75,7 @@ fn get_legal_moves(
 			}
 		}
 		Pieces::Knight => {
-			let directions: [(i32, i32); 8] = [
+			let directions: [(i8, i8); 8] = [
 				(1, 2),
 				(2, 1),
 				(-1, 2),
@@ -76,13 +86,13 @@ fn get_legal_moves(
 				(-2, -1),
 			];
 
-			let calc_idx = |row: i32, col: i32| (row * BOARD_SIZE + col) as usize;
+			let calc_idx = |row: i8, col: i8| (row * BOARD_SIZE + col);
 			for &(dx, dy) in &directions {
-				let new_row = i32::from(piece.row.unwrap_or(0)) + dx;
-				let new_col = i32::from(piece.col.unwrap_or(0)) + dy;
+				let new_row = piece.row.unwrap_or(0) + dx;
+				let new_col = piece.col.unwrap_or(0) + dy;
 
 				if (0..8).contains(&new_row) && (0..8).contains(&new_col) {
-					moves.push(calc_idx(new_row, new_col) as i32);
+					moves.push(calc_idx(new_row, new_col));
 				}
 			}
 		}
@@ -97,13 +107,13 @@ fn get_legal_moves(
 				let piece_on_target_square = board[target_square as usize];
 
 				// Blocked by friendly piece, so can't move any further in this direction
-				if (piece_on_target_square.color == turn_color) {
+				if (&piece_on_target_square.color == turn_color) {
 					break;
 				}
 				moves.push(target_square);
 
 				// Can't move any further in this directoin after capturing opponent's piece
-				if (piece_on_target_square.color != turn_color
+				if (&piece_on_target_square.color != turn_color
 					&& piece_on_target_square.color != PieceColor::None)
 				{
 					break;
@@ -112,7 +122,7 @@ fn get_legal_moves(
 			for i in valid_moves.1 {
 				let target_square = (start_square + i);
 				let piece_on_target_square = board[target_square as usize];
-				if (piece_on_target_square.color != turn_color
+				if (&piece_on_target_square.color != turn_color
 					&& piece_on_target_square.color != PieceColor::None)
 				{
 					moves.push(target_square);
@@ -121,7 +131,11 @@ fn get_legal_moves(
 		}
 		Pieces::King => {
 			for (idx, val) in direction_offsets.iter().enumerate() {
-				if squares_to_edge.get(&(start_square as usize)).unwrap()[idx] > 0 {
+				if squares_to_edge
+					.get(&(start_square as usize))
+					.expect("could not find squares_to_edge from start_square")[idx]
+					> 0
+				{
 					let target_square = (start_square + val);
 					let piece_on_target_square = board[target_square as usize];
 
@@ -148,6 +162,7 @@ fn get_legal_moves(
 	moves
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn move_piece_system(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window>,
@@ -163,13 +178,14 @@ pub fn move_piece_system(
 	mut ev_legal: EventWriter<LegalMoveEvent>,
 	move_info: Res<MoveData>,
 ) {
-	let window = windows.get_single().unwrap();
+	let window = windows.get_single().expect("could not get window");
 
+	#[allow(clippy::cast_possible_truncation)]
 	if let Some(position) = window.cursor_position() {
-		let col = ((position[0] / 75.).floor()) as u8;
-		let row = ((position[1] / 75.).floor()) as u8;
+		let col = ((position[0] / 75.).floor()) as i8;
+		let row = ((position[1] / 75.).floor()) as i8;
 
-		let index = (row * BOARD_SIZE as u8 + col) as usize;
+		let index = (row * BOARD_SIZE + col) as usize;
 
 		let clicked_piece = board.board[index];
 		if mouse_button_input.just_pressed(MouseButton::Left) {
@@ -187,14 +203,14 @@ pub fn move_piece_system(
 				selected_piece.0 = Some(clicked_piece);
 				if let Some(selected) = selected_piece.0 {
 					let selected_index =
-						selected.row.unwrap_or(0) * BOARD_SIZE as u8 + selected.col.unwrap_or(0);
+						selected.row.unwrap_or(0) * BOARD_SIZE + selected.col.unwrap_or(0);
 
 					let legal_moves = get_legal_moves(
-						move_info.clone().num_squares_to_edge,
+						&move_info.clone().num_squares_to_edge,
 						move_info.direction_offsets,
-						board.board,
-						i32::from(selected_index),
-						current_state.0.clone(),
+						&board.board,
+						selected_index,
+						&current_state.0.clone(),
 					);
 					ev_legal.send(LegalMoveEvent(Some(legal_moves)));
 				}
@@ -211,21 +227,20 @@ pub fn move_piece_system(
 		if mouse_button_input.pressed(MouseButton::Left) {
 			if let Some(selected) = selected_piece.0 {
 				let selected_index =
-					selected.row.unwrap_or(0) * BOARD_SIZE as u8 + selected.col.unwrap_or(0);
+					selected.row.unwrap_or(0) * BOARD_SIZE + selected.col.unwrap_or(0);
 
 				let legal_moves = get_legal_moves(
-					move_info.clone().num_squares_to_edge,
+					&move_info.clone().num_squares_to_edge,
 					move_info.direction_offsets,
-					board.board,
-					i32::from(selected_index),
-					current_state.0.clone(),
+					&board.board,
+					selected_index,
+					&current_state.0.clone(),
 				);
 
 				ev_legal.send(LegalMoveEvent(Some(legal_moves.clone())));
-				let clicked_index = row * BOARD_SIZE as u8 + col;
+				let clicked_index = row * BOARD_SIZE + col;
 
-				if clicked_piece.color != current_state.0
-					&& legal_moves.contains(&i32::from(clicked_index))
+				if clicked_piece.color != current_state.0 && legal_moves.contains(&(clicked_index))
 				{
 					ev_hover.send(HoverEvent {
 						row: Some(row),
@@ -254,32 +269,32 @@ pub fn move_piece_system(
 
 			if let Some(selected) = selected_piece.0 {
 				let selected_index =
-					selected.row.unwrap_or(0) * BOARD_SIZE as u8 + selected.col.unwrap_or(0);
+					selected.row.unwrap_or(0) * BOARD_SIZE + selected.col.unwrap_or(0);
 
 				let legal_moves = get_legal_moves(
-					move_info.clone().num_squares_to_edge,
+					&move_info.clone().num_squares_to_edge,
 					move_info.direction_offsets,
-					board.board,
-					i32::from(selected_index),
-					current_state.0.clone(),
+					&board.board,
+					selected_index as i8,
+					&current_state.0.clone(),
 				);
 
-				let clicked_index = row * BOARD_SIZE as u8 + col;
+				let clicked_index = row * BOARD_SIZE + col;
 				if selected != clicked_piece
 					&& clicked_piece.color != current_state.0
-					&& legal_moves.contains(&i32::from(clicked_index))
+					&& legal_moves.contains(&(clicked_index as i8))
 				{
 					for (mut piece, mut transform, entity) in pieces.iter_mut() {
 						if piece.as_ref() == &selected {
-							transform.translation.x =
-								f32::from(col) * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
-							transform.translation.y =
-								f32::from(row) * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+							transform.translation.x = f32::from(col) * SQUARE_SIZE
+								- (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
+							transform.translation.y = f32::from(row) * SQUARE_SIZE
+								- (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.);
 							transform.translation.z = 2.;
 							piece.row = Some(row);
 							piece.col = Some(col);
 
-							let old_index = (selected.row.unwrap_or(0) * BOARD_SIZE as u8
+							let old_index = (selected.row.unwrap_or(0) * BOARD_SIZE
 								+ selected.col.unwrap_or(0)) as usize;
 
 							board.board[old_index] = Piece {
@@ -315,7 +330,7 @@ pub fn move_piece_system(
 					});
 				} else if selected == clicked_piece
 					|| clicked_piece.color == current_state.0
-					|| !legal_moves.contains(&i32::from(clicked_index))
+					|| !legal_moves.contains(&(clicked_index as i8))
 				{
 					for (piece, mut transform, _) in pieces.iter_mut() {
 						if piece.as_ref() == &selected {
@@ -355,10 +370,10 @@ pub fn highlight_selected_system(
 }
 
 pub fn highlight_moved_system(
-	mut move_square: Query<(&MovedSquare, &mut Transform)>,
+	mut moved_square: Query<(&MovedSquare, &mut Transform)>,
 	mut ev_move: EventReader<MoveEvent>,
 ) {
-	let mut moved_square = move_square.get_single_mut().unwrap();
+	let mut moved_square = moved_square.get_single_mut().unwrap();
 	for i in ev_move.iter() {
 		if let (Some(row), Some(col)) = (i.row, i.col) {
 			moved_square.1.translation.x =
@@ -407,8 +422,8 @@ pub fn highlight_legal_moves_system(
 				commands.entity(entity).despawn_recursive();
 			}
 			for i in moves.iter() {
-				let row = *i / BOARD_SIZE;
-				let col = *i % BOARD_SIZE;
+				let row = *i as i8 / BOARD_SIZE;
+				let col = *i as i8 % BOARD_SIZE;
 				commands
 					.spawn(MaterialMesh2dBundle {
 						mesh: meshes.add(shape::Circle::new(50.).into()).into(),
