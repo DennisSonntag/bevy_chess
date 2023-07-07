@@ -1,11 +1,11 @@
-#![allow(dead_code, unused)]
+#![allow(dead_code, unused, clippy::cast_sign_loss, clippy::cast_precision_loss)]
 
 use bevy::{prelude::*, sprite::Anchor, window::PresentMode};
 use bevy_prototype_lyon::prelude::*;
 
 use components::{
-	BoardResource, HighlightSquare, HoverEvent, HoverSquare, MoveEvent, MovedSquare, Piece,
-	SelectedPiece, TakeEvent, Turn, MoveData, LegalMoveEvent,
+	BoardResource, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent, MoveData, MoveEvent,
+	MovedSquare, Piece, SelectedPiece, TakeEvent, Turn,
 };
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
@@ -22,7 +22,6 @@ const BOARD_SIZE: i8 = 8;
 
 fn main() {
 	App::new()
-		// .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
 		.add_plugins(DefaultPlugins.set(WindowPlugin {
 			primary_window: Some(Window {
 				title: "chess".into(),
@@ -56,6 +55,7 @@ fn setup_camera(mut commands: Commands) {
 	commands.spawn(Camera2dBundle::default());
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 	let font = asset_server.load("fonts/Roboto-Bold.ttf");
 	let text_style = TextStyle {
@@ -71,17 +71,17 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 				Color::rgb_u8(236, 210, 185)
 			};
 
-			let color1 = if (row + col) % 2 != 0 {
-				Color::rgb_u8(162, 110, 91)
-			} else {
+			let color1 = if (row + col) % 2 == 0 {
 				Color::rgb_u8(236, 210, 185)
+			} else {
+				Color::rgb_u8(162, 110, 91)
 			};
 
 			commands.spawn((SpriteBundle {
 				transform: Transform {
 					translation: Vec3::new(
-						-(WINDOW_SIZE / 2.) + ((col as f32 - 0.5) * SQUARE_SIZE),
-						-(WINDOW_SIZE / 2.) + ((row as f32 - 0.5) * SQUARE_SIZE),
+						(f32::from(col) - 0.5).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+						(f32::from(row) - 0.5).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
 						0.0,
 					),
 					scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
@@ -95,7 +95,11 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 				commands.spawn((Text2dBundle {
 					text: Text {
 						sections: vec![TextSection::new(
-							format!("{}", char::from_u32(96 + col as u32).unwrap()),
+							format!(
+								"{}",
+								char::from_u32(96 + col as u32)
+									.expect("could not cast number to char")
+							),
 							TextStyle {
 								color: color1,
 								..text_style.clone()
@@ -104,8 +108,8 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 						..Default::default()
 					},
 					transform: Transform::from_translation(Vec3::new(
-						-(WINDOW_SIZE / 2.) + 67. + (SQUARE_SIZE * (col as f32 - 1.)),
-						-(WINDOW_SIZE / 2.) + 10. + (SQUARE_SIZE * (row as f32 - 1.)),
+						SQUARE_SIZE.mul_add(f32::from(col) - 1., -(WINDOW_SIZE / 2.) + 67.),
+						SQUARE_SIZE.mul_add(f32::from(row) - 1., -(WINDOW_SIZE / 2.) + 67.),
 						1.,
 					)),
 					text_anchor: Anchor::Center,
@@ -125,8 +129,8 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 						..Default::default()
 					},
 					transform: Transform::from_translation(Vec3::new(
-						-(WINDOW_SIZE / 2.) + 10. + (SQUARE_SIZE * (col as f32 - 1.)),
-						-(WINDOW_SIZE / 2.) + 60. + (SQUARE_SIZE * (row as f32 - 1.)),
+						SQUARE_SIZE.mul_add(f32::from(col) - 1., -(WINDOW_SIZE / 2.) + 10.),
+						SQUARE_SIZE.mul_add(f32::from(row) - 1., -(WINDOW_SIZE / 2.) + 10.),
 						1.,
 					)),
 					text_anchor: Anchor::Center,
@@ -137,20 +141,19 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 	}
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn spawn_piece_sprites_system(
 	mut commands: Commands,
 	asset_server: Res<AssetServer>,
 	mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 	board: ResMut<BoardResource>,
 ) {
-	// let texture_handle = asset_server.load("pieces.png");
-	// let texture_handle = asset_server.load("pieces3.png");
-	let texture_handle = asset_server.load("pieces5.png");
+	let texture_handle = asset_server.load("pieces.png");
 
 	for (i, el) in board.board.iter().enumerate() {
 		if el.piece as i32 != 0 {
-			let row = i as i8 / BOARD_SIZE as i8;
-			let col = i as i8 % BOARD_SIZE as i8;
+			let row = i8::try_from(i).expect("could not cast index to i8") / BOARD_SIZE;
+			let col = i8::try_from(i).expect("could not cast index to i8") % BOARD_SIZE;
 
 			let texture_atlas = TextureAtlas::from_grid(
 				texture_handle.clone(),
@@ -170,8 +173,10 @@ fn spawn_piece_sprites_system(
 					texture_atlas: texture_atlas_handle,
 					transform: Transform {
 						translation: Vec3::new(
-							col as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.),
-							row as f32 * SQUARE_SIZE - (WINDOW_SIZE / 2.) + (SQUARE_SIZE / 2.),
+							f32::from(col).mul_add(SQUARE_SIZE, -WINDOW_SIZE / 2.)
+								+ (SQUARE_SIZE / 2.),
+							f32::from(row).mul_add(SQUARE_SIZE, -WINDOW_SIZE / 2.)
+								+ (SQUARE_SIZE / 2.),
 							2.0,
 						),
 						scale: Vec3::splat(WINDOW_SIZE / 2500.),
@@ -183,6 +188,7 @@ fn spawn_piece_sprites_system(
 				.insert(Piece {
 					piece: el.piece,
 					color: el.color,
+					amount_moved: el.amount_moved,
 					row: Some(row),
 					col: Some(col),
 				});
@@ -193,8 +199,8 @@ fn spawn_piece_sprites_system(
 		.spawn((SpriteBundle {
 			transform: Transform {
 				translation: Vec3::new(
-					-(WINDOW_SIZE / 2.) + ((0. - 0.5) * SQUARE_SIZE),
-					-(WINDOW_SIZE / 2.) + ((0. - 0.5) * SQUARE_SIZE),
+					(0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+					(0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
 					1.0,
 				),
 				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
@@ -212,8 +218,8 @@ fn spawn_piece_sprites_system(
 		.spawn((SpriteBundle {
 			transform: Transform {
 				translation: Vec3::new(
-					-(WINDOW_SIZE / 2.) + ((0. - 0.5) * SQUARE_SIZE),
-					-(WINDOW_SIZE / 2.) + ((0. - 0.5) * SQUARE_SIZE),
+					(0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+					(0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
 					1.0,
 				),
 				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
@@ -239,8 +245,8 @@ fn spawn_piece_sprites_system(
 				path: GeometryBuilder::build_as(&shape),
 				transform: Transform {
 					translation: Vec3::new(
-						-(WINDOW_SIZE / 2.) + ((0. - 0.5) * SQUARE_SIZE),
-						-(WINDOW_SIZE / 2.) + ((0. - 0.5) * SQUARE_SIZE),
+						(-0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+						(-0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
 						5.0,
 					),
 					scale: Vec3::new(SQUARE_SIZE * 0.66, SQUARE_SIZE * 0.66, 0.0),

@@ -54,10 +54,21 @@ pub enum PieceColor {
 	None,
 }
 
+impl PieceColor {
+	pub const fn not(self) -> Self {
+		match self {
+			Self::Black => Self::White,
+			Self::White => Self::Black,
+			Self::None => Self::None,
+		}
+	}
+}
+
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct Piece {
 	pub row: Option<i8>,
 	pub col: Option<i8>,
+	pub amount_moved: u32,
 	pub piece: Pieces,
 	pub color: PieceColor,
 }
@@ -67,6 +78,7 @@ impl Default for Piece {
 		Self {
 			row: None,
 			col: None,
+			amount_moved: 0,
 			color: PieceColor::None,
 			piece: Pieces::None,
 		}
@@ -99,12 +111,7 @@ impl FromWorld for BoardResource {
 }
 
 fn load_position_from_fen(fen: &str) -> [Piece; 64] {
-	let mut board: [Piece; 64] = [Piece {
-		piece: Pieces::None,
-		color: PieceColor::None,
-		row: None,
-		col: None,
-	}; 64];
+	let mut board: [Piece; 64] = [Piece::default(); 64];
 
 	let mut piece_type_from_symbol: HashMap<char, Pieces> = HashMap::new();
 	piece_type_from_symbol.insert('k', Pieces::King);
@@ -118,7 +125,7 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 	let fen_board: Vec<&str> = fen_data[0].split('/').collect();
 
 	let mut col: i8 = 0;
-	let mut row: i8 = BOARD_SIZE ;
+	let mut row: i8 = BOARD_SIZE;
 
 	for row_data in fen_board {
 		col = -1;
@@ -141,10 +148,17 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 				PieceColor::None
 			};
 
-			let lower_char = &i.to_lowercase().to_string().chars().next().expect("could not get first lowercase character");
+			let lower_char = &i
+				.to_lowercase()
+				.to_string()
+				.chars()
+				.next()
+				.expect("could not get first lowercase character");
 
-			let mut piece_type = if piece_type_from_symbol.contains_key(lower_char) {
-				*piece_type_from_symbol.get(lower_char).expect("value with key lower_char does not exist")
+			let piece_type = if piece_type_from_symbol.contains_key(lower_char) {
+				*piece_type_from_symbol
+					.get(lower_char)
+					.expect("value with key lower_char does not exist")
 			} else {
 				Pieces::None
 			};
@@ -152,6 +166,7 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 			board[(row * BOARD_SIZE + col) as usize] = Piece {
 				piece: piece_type,
 				color: piece_color,
+				amount_moved: 0,
 				row: Some(row),
 				col: Some(col),
 			}

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use bevy::prelude::*;
 
 use crate::components::{MoveEvent, TakeEvent};
@@ -14,6 +12,7 @@ impl Plugin for SoundPlugin {
 	}
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn play_move_sound_system(
 	mut ev_move: EventReader<MoveEvent>,
 	mut ev_take: EventReader<TakeEvent>,
@@ -28,6 +27,7 @@ pub fn play_move_sound_system(
 	}
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn play_take_sound_system(
 	mut ev_take: EventReader<TakeEvent>,
 	asset_server: Res<AssetServer>,
@@ -39,6 +39,7 @@ pub fn play_take_sound_system(
 	}
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn play_start_sound(asset_server: Res<AssetServer>, audio: Res<Audio>) {
 	let music = asset_server.load("sounds/start.ogg");
 	audio.play(music);
