@@ -116,7 +116,7 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 				commands.spawn((Text2dBundle {
 					text: Text {
 						sections: vec![TextSection::new(
-							format!("{}", row),
+							format!("{row}"),
 							TextStyle {
 								color: color1,
 								..text_style.clone()
