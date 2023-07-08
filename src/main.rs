@@ -1,11 +1,15 @@
 #![allow(dead_code, unused, clippy::cast_sign_loss, clippy::cast_precision_loss)]
 
-use bevy::{prelude::*, sprite::Anchor, window::PresentMode};
+use bevy::{
+	prelude::*,
+	sprite::Anchor,
+	window::{ExitCondition, PresentMode},
+};
 use bevy_prototype_lyon::prelude::*;
 
 use components::{
 	BoardResource, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent, MoveData, MoveEvent,
-	MovedSquare, Piece, SelectedPiece, TakeEvent, Turn,
+	MovedSquare, Piece, Position, SelectedPiece, TakeEvent,Turn
 };
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
@@ -31,6 +35,7 @@ fn main() {
 				prevent_default_event_handling: false,
 				..Default::default()
 			}),
+			exit_condition: ExitCondition::OnPrimaryClosed,
 			..Default::default()
 		}))
 		.add_plugin(ShapePlugin)
@@ -189,8 +194,7 @@ fn spawn_piece_sprites_system(
 					piece: el.piece,
 					color: el.color,
 					amount_moved: el.amount_moved,
-					row: Some(row),
-					col: Some(col),
+					pos: Some(Position::new(row, col)),
 				});
 		}
 	}

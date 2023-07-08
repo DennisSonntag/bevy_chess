@@ -13,8 +13,7 @@ pub struct BoardResource {
 pub struct TakeEvent;
 
 pub struct MoveEvent {
-	pub row: Option<i8>,
-	pub col: Option<i8>,
+	pub pos: Option<Position>,
 }
 
 pub struct LegalMoveEvent(pub Option<Vec<i8>>);
@@ -26,8 +25,7 @@ pub struct LegalMoveMarker;
 pub struct MovedSquare;
 
 pub struct HoverEvent {
-	pub row: Option<i8>,
-	pub col: Option<i8>,
+	pub pos: Option<Position>,
 }
 
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
@@ -64,10 +62,21 @@ impl PieceColor {
 	}
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Position {
+	pub row: i8,
+	pub col: i8,
+}
+
+impl Position {
+	pub fn new(row: i8, col: i8) -> Self {
+		Self { row, col }
+	}
+}
+
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct Piece {
-	pub row: Option<i8>,
-	pub col: Option<i8>,
+	pub pos: Option<Position>,
 	pub amount_moved: u32,
 	pub piece: Pieces,
 	pub color: PieceColor,
@@ -76,8 +85,7 @@ pub struct Piece {
 impl Default for Piece {
 	fn default() -> Self {
 		Self {
-			row: None,
-			col: None,
+			pos: None,
 			amount_moved: 0,
 			color: PieceColor::None,
 			piece: Pieces::None,
@@ -129,7 +137,6 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 
 	for row_data in fen_board {
 		col = -1;
-		// col = 0;
 		row -= 1;
 		for i in row_data.chars() {
 			if i.is_ascii_digit() {
@@ -167,8 +174,7 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 				piece: piece_type,
 				color: piece_color,
 				amount_moved: 0,
-				row: Some(row),
-				col: Some(col),
+				pos: Some(Position::new(row, col)),
 			}
 		}
 	}
