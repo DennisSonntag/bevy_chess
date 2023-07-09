@@ -9,7 +9,7 @@ use bevy_prototype_lyon::prelude::*;
 
 use components::{
 	BoardResource, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent, MoveData, MoveEvent,
-	MovedSquare, Piece, Position, SelectedPiece, TakeEvent,Turn
+	MovedSquare, Piece, Pieces, Position, SelectedPiece, TakeEvent, Turn,
 };
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
@@ -156,9 +156,12 @@ fn spawn_piece_sprites_system(
 	let texture_handle = asset_server.load("pieces.png");
 
 	for (index, piece) in board.board.iter().enumerate() {
-		if piece.piece as i32 != 0 {
+		if piece.piece != None {
 			let row = i8::try_from(index).expect("could not cast index to i8") / BOARD_SIZE;
 			let col = i8::try_from(index).expect("could not cast index to i8") % BOARD_SIZE;
+
+			// let idk = piece.piece as i32 - 1;
+			// println!("piece: {:?}, val: {}", piece.piece, idk);
 
 			let texture_atlas = TextureAtlas::from_grid(
 				texture_handle.clone(),
@@ -167,7 +170,7 @@ fn spawn_piece_sprites_system(
 				1,
 				None,
 				Some(Vec2::new(
-					(piece.piece as i32 - 1) as f32 * 333.3,
+					(piece.piece.unwrap() as i32) as f32 * 333.3,
 					(piece.color as i32) as f32 * 333.3,
 				)),
 			);

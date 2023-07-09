@@ -33,7 +33,6 @@ pub struct HoverSquare;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pieces {
-	None,
 	King,
 	Queen,
 	Bishop,
@@ -78,7 +77,7 @@ impl Position {
 pub struct Piece {
 	pub pos: Option<Position>,
 	pub amount_moved: u32,
-	pub piece: Pieces,
+	pub piece: Option<Pieces>,
 	pub color: PieceColor,
 }
 
@@ -88,7 +87,7 @@ impl Default for Piece {
 			pos: None,
 			amount_moved: 0,
 			color: PieceColor::None,
-			piece: Pieces::None,
+			piece: None,
 		}
 	}
 }
@@ -163,11 +162,13 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 				.expect("could not get first lowercase character");
 
 			let piece_type = if piece_type_from_symbol.contains_key(lower_char) {
-				*piece_type_from_symbol
-					.get(lower_char)
-					.expect("value with key lower_char does not exist")
+				Some(
+					*piece_type_from_symbol
+						.get(lower_char)
+						.expect("value with key lower_char does not exist"),
+				)
 			} else {
-				Pieces::None
+				None
 			};
 
 			board[(row * BOARD_SIZE + col) as usize] = Piece {
