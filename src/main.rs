@@ -9,7 +9,7 @@ use bevy_prototype_lyon::prelude::*;
 
 use components::{
 	BoardResource, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent, MoveData, MoveEvent,
-	MovedSquare, Piece, Pieces, Position, SelectedPiece, TakeEvent, Turn,
+	MovedSquare, Piece, PieceColor, Pieces, Position, SelectedPiece, TakeEvent,
 };
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
@@ -43,7 +43,7 @@ fn main() {
 		.init_resource::<BoardResource>()
 		.init_resource::<SelectedPiece>()
 		.init_resource::<MoveData>()
-		.add_state::<Turn>()
+		.add_state::<PieceColor>()
 		.add_event::<MoveEvent>()
 		.add_event::<TakeEvent>()
 		.add_event::<HoverEvent>()
@@ -171,7 +171,7 @@ fn spawn_piece_sprites_system(
 				None,
 				Some(Vec2::new(
 					(piece.piece.unwrap() as i32) as f32 * 333.3,
-					(piece.color as i32) as f32 * 333.3,
+					(piece.color.unwrap() as i32) as f32 * 333.3,
 				)),
 			);
 			let texture_atlas_handle = texture_atlases.add(texture_atlas);

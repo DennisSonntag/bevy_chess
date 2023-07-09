@@ -17,7 +17,7 @@ use crate::{
 	components::{
 		BoardResource, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent, LegalMoveMarker,
 		MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Pieces, Position, SelectedPiece,
-		TakeEvent, Turn,
+		TakeEvent,
 	},
 	BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE,
 };
@@ -39,7 +39,7 @@ fn get_legal_moves(
 	direction_offsets: [i8; 8],
 	board: &[Piece; 64],
 	start_square: i8,
-	turn_color: &Turn,
+	turn_color: &PieceColor,
 ) -> Vec<i8> {
 	let mut moves: Vec<i8> = Vec::new();
 	let piece = board[start_square as usize];
@@ -61,15 +61,15 @@ fn get_legal_moves(
 						let piece_on_target_square = board[target_square as usize];
 
 						// Blocked by friendly piece, so can't move any further in this direction
-						if (&piece_on_target_square.color == turn_color) {
+						if (piece_on_target_square.color == Some(*turn_color)) {
 							break;
 						}
 
 						moves.push(target_square);
 
 						// Can't move any further in this directoin after capturing opponent's piece
-						if (&piece_on_target_square.color != turn_color
-							&& piece_on_target_square.color != PieceColor::None)
+						if (piece_on_target_square.color != Some(*turn_color)
+							&& piece_on_target_square.color != None)
 						{
 							break;
 						}
@@ -101,7 +101,7 @@ fn get_legal_moves(
 				}
 			}
 			Pieces::Pawn => {
-				let valid_offsets = if piece.color == PieceColor::White {
+				let valid_offsets = if piece.color == Some(PieceColor::White) {
 					([8, 16], [9, 7])
 				} else {
 					([-8, -16], [-9, -7])
@@ -111,14 +111,14 @@ fn get_legal_moves(
 					let piece_on_target_square = board[target_square as usize];
 
 					// Blocked by friendly piece, so can't move any further in this direction
-					if (&piece_on_target_square.color == turn_color) {
+					if (piece_on_target_square.color == Some(*turn_color)) {
 						break;
 					}
 					if offset.abs() == 16 && piece.amount_moved != 0 {
 						break;
 					}
 					if (offset.abs() == 8 || offset.abs() == 16)
-						&& piece_on_target_square.color != PieceColor::None
+						&& piece_on_target_square.color != None
 					{
 						break;
 					}
@@ -126,8 +126,8 @@ fn get_legal_moves(
 					moves.push(target_square);
 
 					// Can't move any further in this directoin after capturing opponent's piece
-					if (&piece_on_target_square.color != turn_color
-						&& piece_on_target_square.color != PieceColor::None)
+					if (piece_on_target_square.color != Some(*turn_color)
+						&& piece_on_target_square.color != None)
 					{
 						break;
 					}
@@ -137,12 +137,12 @@ fn get_legal_moves(
 					let piece_on_target_square = board[target_square as usize];
 
 					// Blocked by friendly piece, so can't move any further in this direction
-					if (&piece_on_target_square.color == turn_color) {
+					if (piece_on_target_square.color == Some(*turn_color)) {
 						break;
 					}
 
 					if (offset.abs() == 9 || offset.abs() == 7)
-						&& piece_on_target_square.color != piece.color.not()
+						&& piece_on_target_square.color != Some(piece.color.unwrap().not())
 					{
 						continue;
 					}
@@ -150,8 +150,8 @@ fn get_legal_moves(
 					moves.push(target_square);
 
 					// Can't move any further in this directoin after capturing opponent's piece
-					if (&piece_on_target_square.color != turn_color
-						&& piece_on_target_square.color != PieceColor::None)
+					if (piece_on_target_square.color != Some(*turn_color)
+						&& piece_on_target_square.color != None)
 					{
 						break;
 					}
@@ -168,7 +168,7 @@ fn get_legal_moves(
 						let piece_on_target_square = board[target_square as usize];
 
 						// Blocked by friendly piece, so can't move any further in this direction
-						if (&piece_on_target_square.color == turn_color) {
+						if (piece_on_target_square.color == Some(*turn_color)) {
 							continue;
 						}
 						moves.push(target_square);
@@ -187,8 +187,8 @@ pub fn move_piece_system(
 	mut board: ResMut<BoardResource>,
 	mut selected_piece: ResMut<SelectedPiece>,
 	mut pieces: Query<(&mut Piece, &mut Transform, Entity)>,
-	mut next_state: ResMut<NextState<Turn>>,
-	current_state: Res<State<Turn>>,
+	mut next_state: ResMut<NextState<PieceColor>>,
+	current_state: Res<State<PieceColor>>,
 	mut commands: Commands,
 	mut ev_move: EventWriter<MoveEvent>,
 	mut ev_hover: EventWriter<HoverEvent>,
@@ -212,7 +212,7 @@ pub fn move_piece_system(
 				selected_piece.0 = None;
 				ev_legal.send(LegalMoveEvent(None));
 				ev_move.send(MoveEvent { pos: None });
-			} else if clicked_piece.piece != None && clicked_piece.color == current_state.0 {
+			} else if clicked_piece.piece != None && clicked_piece.color == Some(current_state.0) {
 				//if piece isnt selected select it
 				selected_piece.0 = Some(clicked_piece);
 				if let Some(selected) = selected_piece.0 {
@@ -249,13 +249,13 @@ pub fn move_piece_system(
 					ev_legal.send(LegalMoveEvent(Some(legal_moves.clone())));
 					let clicked_index = row * BOARD_SIZE + col;
 
-					if clicked_piece.color != current_state.0
+					if clicked_piece.color != Some(current_state.0)
 						&& legal_moves.contains(&(clicked_index))
 					{
 						ev_hover.send(HoverEvent {
 							pos: Some(Position::new(row, col)),
 						});
-					} else if clicked_piece.color == current_state.0 {
+					} else if clicked_piece.color == Some(current_state.0) {
 						ev_hover.send(HoverEvent { pos: None });
 					}
 				}
@@ -285,7 +285,7 @@ pub fn move_piece_system(
 
 					let clicked_index = row * BOARD_SIZE + col;
 					if selected != clicked_piece
-						&& clicked_piece.color != current_state.0
+						&& clicked_piece.color != Some(current_state.0)
 						&& legal_moves.contains(&{ clicked_index })
 					{
 						for (mut piece, mut transform, entity) in pieces.iter_mut() {
@@ -314,8 +314,8 @@ pub fn move_piece_system(
 								});
 							}
 							if *piece.as_ref() == clicked_piece
-								&& clicked_piece.color != PieceColor::None
-								&& clicked_piece.color != current_state.0
+								&& clicked_piece.color != None && clicked_piece.color
+								!= Some(current_state.0)
 							{
 								commands.entity(entity).despawn_recursive();
 								ev_take.send(TakeEvent);
@@ -323,12 +323,9 @@ pub fn move_piece_system(
 						}
 						selected_piece.0 = None;
 						ev_legal.send(LegalMoveEvent(None));
-						next_state.set(match current_state.0 {
-							Turn::White => Turn::Black,
-							Turn::Black => Turn::White,
-						});
+						next_state.set(current_state.0.not());
 					} else if selected == clicked_piece
-						|| clicked_piece.color == current_state.0
+						|| clicked_piece.color == Some(current_state.0)
 						|| !legal_moves.contains(&{ clicked_index })
 					{
 						for (piece, mut transform, _) in pieces.iter_mut() {

@@ -44,11 +44,11 @@ pub enum Pieces {
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct HighlightSquare;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, States)]
 pub enum PieceColor {
+	#[default]
 	White,
 	Black,
-	None,
 }
 
 impl PieceColor {
@@ -56,7 +56,6 @@ impl PieceColor {
 		match self {
 			Self::Black => Self::White,
 			Self::White => Self::Black,
-			Self::None => Self::None,
 		}
 	}
 }
@@ -78,7 +77,7 @@ pub struct Piece {
 	pub pos: Option<Position>,
 	pub amount_moved: u32,
 	pub piece: Option<Pieces>,
-	pub color: PieceColor,
+	pub color: Option<PieceColor>,
 }
 
 impl Default for Piece {
@@ -86,28 +85,28 @@ impl Default for Piece {
 		Self {
 			pos: None,
 			amount_moved: 0,
-			color: PieceColor::None,
+			color: None,
 			piece: None,
 		}
 	}
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
-pub enum Turn {
-	#[default]
-	White,
-	Black,
-}
-
-impl PartialEq<Turn> for PieceColor {
-	fn eq(&self, other: &Turn) -> bool {
-		matches!(
-			(self, other),
-			(Self::White, Turn::White) | (Self::Black, Turn::Black)
-		)
-	}
-}
-
+// #[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
+// pub enum Turn {
+// 	#[default]
+// 	White,
+// 	Black,
+// }
+//
+// impl PartialEq<Turn> for PieceColor {
+// 	fn eq(&self, other: &Turn) -> bool {
+// 		matches!(
+// 			(self, other),
+// 			(Self::White, Turn::White) | (Self::Black, Turn::Black)
+// 		)
+// 	}
+// }
+//
 impl FromWorld for BoardResource {
 	fn from_world(_: &mut World) -> Self {
 		let board =
@@ -147,11 +146,11 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 				col += 1;
 			}
 			let piece_color = if char.is_uppercase() {
-				PieceColor::White
+				Some(PieceColor::White)
 			} else if char.is_lowercase() {
-				PieceColor::Black
+				Some(PieceColor::Black)
 			} else {
-				PieceColor::None
+				None
 			};
 
 			let lower_char = &char
