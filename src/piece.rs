@@ -100,23 +100,23 @@ fn get_legal_moves(
 			}
 		}
 		Pieces::Pawn => {
-			let valid_moves = if piece.color == PieceColor::White {
+			let valid_offsets = if piece.color == PieceColor::White {
 				([8, 16], [9, 7])
 			} else {
 				([-8, -16], [-9, -7])
 			};
-			for i in valid_moves.0 {
-				let target_square = (start_square + i);
+			for offset in valid_offsets.0 {
+				let target_square = (start_square + offset);
 				let piece_on_target_square = board[target_square as usize];
 
 				// Blocked by friendly piece, so can't move any further in this direction
 				if (&piece_on_target_square.color == turn_color) {
 					break;
 				}
-				if i.abs() == 16 && piece.amount_moved != 0 {
+				if offset.abs() == 16 && piece.amount_moved != 0 {
 					break;
 				}
-				if (i.abs() == 8 || i.abs() == 16)
+				if (offset.abs() == 8 || offset.abs() == 16)
 					&& piece_on_target_square.color != PieceColor::None
 				{
 					break;
@@ -131,8 +131,8 @@ fn get_legal_moves(
 					break;
 				}
 			}
-			for i in valid_moves.1 {
-				let target_square = (start_square + i);
+			for offset in valid_offsets.1 {
+				let target_square = (start_square + offset);
 				let piece_on_target_square = board[target_square as usize];
 
 				// Blocked by friendly piece, so can't move any further in this direction
@@ -140,7 +140,7 @@ fn get_legal_moves(
 					break;
 				}
 
-				if (i.abs() == 9 || i.abs() == 7)
+				if (offset.abs() == 9 || offset.abs() == 7)
 					&& piece_on_target_square.color != piece.color.not()
 				{
 					continue;
@@ -383,8 +383,8 @@ pub fn highlight_moved_system(
 	let mut moved_square = moved_square
 		.get_single_mut()
 		.expect("failed to get moved_square");
-	for i in ev_move.iter() {
-		if let Some(position) = i.pos {
+	for event in ev_move.iter() {
+		if let Some(position) = event.pos {
 			moved_square.1.translation.x = f32::from(position.col)
 				.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
 				+ (SQUARE_SIZE / 2.);
@@ -407,9 +407,8 @@ pub fn highlight_hover_system(
 	let mut hover_square = hover_square
 		.get_single_mut()
 		.expect("failed to get hover_square");
-	for i in ev_move.iter() {
-		// if let (Some(row), Some(col)) = (i.row, i.col) {
-		if let Some(position) = i.pos {
+	for event in ev_move.iter() {
+		if let Some(position) = event.pos {
 			hover_square.1.translation.x = f32::from(position.col)
 				.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
 				+ (SQUARE_SIZE / 2.);
@@ -426,20 +425,20 @@ pub fn highlight_hover_system(
 }
 
 pub fn highlight_legal_moves_system(
-	mut ev_move: EventReader<LegalMoveEvent>,
+	mut ev_legal: EventReader<LegalMoveEvent>,
 	mut commands: Commands,
 	mut materials: ResMut<Assets<ColorMaterial>>,
 	mut meshes: ResMut<Assets<Mesh>>,
 	mut markers: Query<(&LegalMoveMarker, Entity)>,
 ) {
-	for event in ev_move.iter() {
-		if let Some(moves) = &event.0 {
+	for event in ev_legal.iter() {
+		if let Some(legal_moves) = &event.0 {
 			for (_, entity) in markers.iter_mut() {
 				commands.entity(entity).despawn_recursive();
 			}
-			for i in moves.iter() {
-				let row = *i / BOARD_SIZE;
-				let col = *i % BOARD_SIZE;
+			for legal_move in legal_moves.iter() {
+				let row = *legal_move / BOARD_SIZE;
+				let col = *legal_move % BOARD_SIZE;
 				commands
 					.spawn(MaterialMesh2dBundle {
 						mesh: meshes.add(shape::Circle::new(50.).into()).into(),

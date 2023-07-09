@@ -19,8 +19,8 @@ pub fn play_move_sound_system(
 	asset_server: Res<AssetServer>,
 	audio: Res<Audio>,
 ) {
-	for i in ev_move.iter() {
-		if i.pos.is_some() && ev_take.iter().count() == 0 {
+	for event in ev_move.iter() {
+		if event.pos.is_some() && ev_take.iter().count() == 0 {
 			let music = asset_server.load("sounds/move.ogg");
 			audio.play(music);
 		}

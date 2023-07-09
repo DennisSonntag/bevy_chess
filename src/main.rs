@@ -155,10 +155,10 @@ fn spawn_piece_sprites_system(
 ) {
 	let texture_handle = asset_server.load("pieces.png");
 
-	for (i, el) in board.board.iter().enumerate() {
-		if el.piece as i32 != 0 {
-			let row = i8::try_from(i).expect("could not cast index to i8") / BOARD_SIZE;
-			let col = i8::try_from(i).expect("could not cast index to i8") % BOARD_SIZE;
+	for (index, piece) in board.board.iter().enumerate() {
+		if piece.piece as i32 != 0 {
+			let row = i8::try_from(index).expect("could not cast index to i8") / BOARD_SIZE;
+			let col = i8::try_from(index).expect("could not cast index to i8") % BOARD_SIZE;
 
 			let texture_atlas = TextureAtlas::from_grid(
 				texture_handle.clone(),
@@ -167,8 +167,8 @@ fn spawn_piece_sprites_system(
 				1,
 				None,
 				Some(Vec2::new(
-					(el.piece as i32 - 1) as f32 * 333.3,
-					(el.color as i32) as f32 * 333.3,
+					(piece.piece as i32 - 1) as f32 * 333.3,
+					(piece.color as i32) as f32 * 333.3,
 				)),
 			);
 			let texture_atlas_handle = texture_atlases.add(texture_atlas);
@@ -191,9 +191,9 @@ fn spawn_piece_sprites_system(
 					..default()
 				})
 				.insert(Piece {
-					piece: el.piece,
-					color: el.color,
-					amount_moved: el.amount_moved,
+					piece: piece.piece,
+					color: piece.color,
+					amount_moved: piece.amount_moved,
 					pos: Some(Position::new(row, col)),
 				});
 		}

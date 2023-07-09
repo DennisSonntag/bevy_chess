@@ -138,24 +138,24 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 	for row_data in fen_board {
 		col = -1;
 		row -= 1;
-		for i in row_data.chars() {
-			if i.is_ascii_digit() {
-				col += i as i8;
+		for char in row_data.chars() {
+			if char.is_ascii_digit() {
+				col += char as i8;
 				if col >= 7 {
 					continue;
 				}
 			} else {
 				col += 1;
 			}
-			let piece_color = if i.is_uppercase() {
+			let piece_color = if char.is_uppercase() {
 				PieceColor::White
-			} else if i.is_lowercase() {
+			} else if char.is_lowercase() {
 				PieceColor::Black
 			} else {
 				PieceColor::None
 			};
 
-			let lower_char = &i
+			let lower_char = &char
 				.to_lowercase()
 				.to_string()
 				.chars()
