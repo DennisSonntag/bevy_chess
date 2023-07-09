@@ -9,7 +9,7 @@ use bevy_prototype_lyon::prelude::*;
 
 use components::{
 	BoardResource, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent, MoveData, MoveEvent,
-	MovedSquare, Piece, PieceColor, Pieces, Position, SelectedPiece, TakeEvent,
+	MovedSquare, Piece, PieceColor, Position, SelectedPiece, TakeEvent,
 };
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
@@ -76,7 +76,7 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 				Color::rgb_u8(236, 210, 185)
 			};
 
-			let color1 = if (row + col) % 2 == 0 {
+			let color_alternate = if (row + col) % 2 == 0 {
 				Color::rgb_u8(236, 210, 185)
 			} else {
 				Color::rgb_u8(162, 110, 91)
@@ -106,7 +106,7 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 									.expect("could not cast number to char")
 							),
 							TextStyle {
-								color: color1,
+								color: color_alternate,
 								..text_style.clone()
 							},
 						)],
@@ -127,7 +127,7 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 						sections: vec![TextSection::new(
 							format!("{row}"),
 							TextStyle {
-								color: color1,
+								color: color_alternate,
 								..text_style.clone()
 							},
 						)],
@@ -156,12 +156,10 @@ fn spawn_piece_sprites_system(
 	let texture_handle = asset_server.load("pieces.png");
 
 	for (index, piece) in board.board.iter().enumerate() {
-		if piece.piece != None {
+		// if piece.piece.is_some() {
+		if let (Some(piece_type), Some(piece_color)) = (piece.piece, piece.color) {
 			let row = i8::try_from(index).expect("could not cast index to i8") / BOARD_SIZE;
 			let col = i8::try_from(index).expect("could not cast index to i8") % BOARD_SIZE;
-
-			// let idk = piece.piece as i32 - 1;
-			// println!("piece: {:?}, val: {}", piece.piece, idk);
 
 			let texture_atlas = TextureAtlas::from_grid(
 				texture_handle.clone(),
@@ -170,8 +168,8 @@ fn spawn_piece_sprites_system(
 				1,
 				None,
 				Some(Vec2::new(
-					(piece.piece.unwrap() as i32) as f32 * 333.3,
-					(piece.color.unwrap() as i32) as f32 * 333.3,
+					(piece_type as i32) as f32 * 333.3,
+					(piece_color as i32) as f32 * 333.3,
 				)),
 			);
 			let texture_atlas_handle = texture_atlases.add(texture_atlas);
@@ -225,8 +223,8 @@ fn spawn_piece_sprites_system(
 		.spawn((SpriteBundle {
 			transform: Transform {
 				translation: Vec3::new(
-					(0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
-					(0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+					(-0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+					(-0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
 					1.0,
 				),
 				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),

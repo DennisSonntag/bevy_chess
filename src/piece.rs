@@ -34,151 +34,183 @@ impl Plugin for PiecePlugin {
 	}
 }
 
-fn get_legal_moves(
-	squares_to_edge: &HashMap<usize, Vec<i8>>,
-	direction_offsets: [i8; 8],
-	board: &[Piece; 64],
+pub struct LegalMoveGen<'a> {
+	piece: Piece,
 	start_square: i8,
-	turn_color: &PieceColor,
-) -> Vec<i8> {
-	let mut moves: Vec<i8> = Vec::new();
-	let piece = board[start_square as usize];
-	if let Some(piece_type) = piece.piece {
-		match piece_type {
-			Pieces::Queen | Pieces::Rook | Pieces::Bishop => {
-				let start_dir_index = if piece_type == Pieces::Bishop { 4 } else { 0 };
+	squares_to_edge: &'a HashMap<usize, Vec<i8>>,
+	direction_offsets: [i8; 8],
+	board: [Piece; 64],
+	turn_color: PieceColor,
+	moves: Vec<i8>,
+}
 
-				let end_dir_index = if piece_type == Pieces::Rook { 4 } else { 8 };
+impl LegalMoveGen<'_> {
+	pub fn sliding_moves(&mut self) {
+		if let Some(piece_type) = self.piece.piece {
+			let start_dir_index = if piece_type == Pieces::Bishop { 4 } else { 0 };
 
-				for direction_index in start_dir_index..end_dir_index {
-					let direction_index = direction_index as usize;
-					for n in 0..squares_to_edge
-						.get(&(start_square as usize))
-						.expect("squares to edge for start square not found")[direction_index]
-					{
-						let target_square =
-							(start_square + direction_offsets[direction_index] * (n + 1));
-						let piece_on_target_square = board[target_square as usize];
+			let end_dir_index = if piece_type == Pieces::Rook { 4 } else { 8 };
 
-						// Blocked by friendly piece, so can't move any further in this direction
-						if (piece_on_target_square.color == Some(*turn_color)) {
-							break;
-						}
-
-						moves.push(target_square);
-
-						// Can't move any further in this directoin after capturing opponent's piece
-						if (piece_on_target_square.color != Some(*turn_color)
-							&& piece_on_target_square.color != None)
-						{
-							break;
-						}
-					}
-				}
-			}
-			Pieces::Knight => {
-				let directions: [(i8, i8); 8] = [
-					(1, 2),
-					(2, 1),
-					(-1, 2),
-					(-2, 1),
-					(1, -2),
-					(2, -1),
-					(-1, -2),
-					(-2, -1),
-				];
-
-				let calc_idx = |row: i8, col: i8| (row * BOARD_SIZE + col);
-				for &(dx, dy) in &directions {
-					if let Some(position) = piece.pos {
-						let new_row = position.row + dx;
-						let new_col = position.col + dy;
-
-						if (0..8).contains(&new_row) && (0..8).contains(&new_col) {
-							moves.push(calc_idx(new_row, new_col));
-						}
-					}
-				}
-			}
-			Pieces::Pawn => {
-				let valid_offsets = if piece.color == Some(PieceColor::White) {
-					([8, 16], [9, 7])
-				} else {
-					([-8, -16], [-9, -7])
-				};
-				for offset in valid_offsets.0 {
-					let target_square = (start_square + offset);
-					let piece_on_target_square = board[target_square as usize];
+			for direction_index in start_dir_index..end_dir_index {
+				let direction_index = direction_index as usize;
+				for n in 0..self
+					.squares_to_edge
+					.get(&(self.start_square as usize))
+					.expect("squares to edge for start square not found")[direction_index]
+				{
+					let target_square =
+						(self.start_square + self.direction_offsets[direction_index] * (n + 1));
+					let piece_on_target_square = self.board[target_square as usize];
 
 					// Blocked by friendly piece, so can't move any further in this direction
-					if (piece_on_target_square.color == Some(*turn_color)) {
-						break;
-					}
-					if offset.abs() == 16 && piece.amount_moved != 0 {
-						break;
-					}
-					if (offset.abs() == 8 || offset.abs() == 16)
-						&& piece_on_target_square.color != None
-					{
+					if (piece_on_target_square.color == Some(self.turn_color)) {
 						break;
 					}
 
-					moves.push(target_square);
+					self.moves.push(target_square);
 
 					// Can't move any further in this directoin after capturing opponent's piece
-					if (piece_on_target_square.color != Some(*turn_color)
-						&& piece_on_target_square.color != None)
+					if (piece_on_target_square.color != Some(self.turn_color)
+						&& piece_on_target_square.color.is_some())
 					{
 						break;
-					}
-				}
-				for offset in valid_offsets.1 {
-					let target_square = (start_square + offset);
-					let piece_on_target_square = board[target_square as usize];
-
-					// Blocked by friendly piece, so can't move any further in this direction
-					if (piece_on_target_square.color == Some(*turn_color)) {
-						break;
-					}
-
-					if (offset.abs() == 9 || offset.abs() == 7)
-						&& piece_on_target_square.color != Some(piece.color.unwrap().not())
-					{
-						continue;
-					}
-
-					moves.push(target_square);
-
-					// Can't move any further in this directoin after capturing opponent's piece
-					if (piece_on_target_square.color != Some(*turn_color)
-						&& piece_on_target_square.color != None)
-					{
-						break;
-					}
-				}
-			}
-			Pieces::King => {
-				for (idx, val) in direction_offsets.iter().enumerate() {
-					if squares_to_edge
-						.get(&(start_square as usize))
-						.expect("could not find squares_to_edge from start_square")[idx]
-						> 0
-					{
-						let target_square = (start_square + val);
-						let piece_on_target_square = board[target_square as usize];
-
-						// Blocked by friendly piece, so can't move any further in this direction
-						if (piece_on_target_square.color == Some(*turn_color)) {
-							continue;
-						}
-						moves.push(target_square);
 					}
 				}
 			}
 		}
 	}
 
-	moves
+	pub fn pawn_moves(&mut self) {
+		let valid_offsets = if self.piece.color == Some(PieceColor::White) {
+			([8, 16], [9, 7])
+		} else {
+			([-8, -16], [-9, -7])
+		};
+		for offset in valid_offsets.0 {
+			let target_square = (self.start_square + offset);
+			let piece_on_target_square = self.board[target_square as usize];
+
+			// Blocked by friendly piece, so can't move any further in this direction
+			if (piece_on_target_square.color == Some(self.turn_color)) {
+				break;
+			}
+			if offset.abs() == 16 && self.piece.amount_moved != 0 {
+				break;
+			}
+			if (offset.abs() == 8 || offset.abs() == 16) && piece_on_target_square.color.is_some() {
+				break;
+			}
+
+			self.moves.push(target_square);
+
+			// Can't move any further in this directoin after capturing opponent's piece
+			if (piece_on_target_square.color != Some(self.turn_color)
+				&& piece_on_target_square.color.is_some())
+			{
+				break;
+			}
+		}
+		for offset in valid_offsets.1 {
+			if let Some(piece_color) = self.piece.color {
+				let target_square = (self.start_square + offset);
+				let piece_on_target_square = self.board[target_square as usize];
+
+				// Blocked by friendly piece, so can't move any further in this direction
+				if (piece_on_target_square.color == Some(self.turn_color)) {
+					break;
+				}
+
+				if (offset.abs() == 9 || offset.abs() == 7)
+					&& piece_on_target_square.color != Some(piece_color.not())
+				{
+					continue;
+				}
+
+				self.moves.push(target_square);
+
+				// Can't move any further in this directoin after capturing opponent's piece
+				if (piece_on_target_square.color != Some(self.turn_color)
+					&& piece_on_target_square.color.is_some())
+				{
+					break;
+				}
+			}
+		}
+	}
+
+	pub fn knight_moves(&mut self) {
+		let directions: [(i8, i8); 8] = [
+			(1, 2),
+			(2, 1),
+			(-1, 2),
+			(-2, 1),
+			(1, -2),
+			(2, -1),
+			(-1, -2),
+			(-2, -1),
+		];
+
+		let calculate_index = |row: i8, col: i8| (row * BOARD_SIZE + col);
+		for &(dir_x, dir_y) in &directions {
+			if let Some(position) = self.piece.pos {
+				let new_row = position.row + dir_x;
+				let new_col = position.col + dir_y;
+
+				if (0..8).contains(&new_row) && (0..8).contains(&new_col) {
+					self.moves.push(calculate_index(new_row, new_col));
+				}
+			}
+		}
+	}
+	pub fn king_moves(&mut self) {
+		for (idx, val) in self.direction_offsets.iter().enumerate() {
+			if self
+				.squares_to_edge
+				.get(&(self.start_square as usize))
+				.expect("could not find squares_to_edge from start_square")[idx]
+				> 0
+			{
+				let target_square = (self.start_square + val);
+				let piece_on_target_square = self.board[target_square as usize];
+
+				// Blocked by friendly piece, so can't move any further in this direction
+				if (piece_on_target_square.color == Some(self.turn_color)) {
+					continue;
+				}
+				self.moves.push(target_square);
+			}
+		}
+	}
+}
+
+fn get_legal_moves(
+	squares_to_edge: &HashMap<usize, Vec<i8>>,
+	direction_offsets: [i8; 8],
+	board: &[Piece; 64],
+	start_square: i8,
+	turn_color: PieceColor,
+) -> Vec<i8> {
+	let mut moves: Vec<i8> = Vec::new();
+	let piece = board[start_square as usize];
+	let mut legal_move_gen = LegalMoveGen {
+		piece,
+		start_square,
+		squares_to_edge,
+		direction_offsets,
+		board: *board,
+		turn_color,
+		moves,
+	};
+	if let Some(piece_type) = piece.piece {
+		match piece_type {
+			Pieces::Queen | Pieces::Rook | Pieces::Bishop => legal_move_gen.sliding_moves(),
+			Pieces::Knight => legal_move_gen.knight_moves(),
+			Pieces::Pawn => legal_move_gen.pawn_moves(),
+			Pieces::King => legal_move_gen.king_moves(),
+		}
+	}
+
+	legal_move_gen.moves
 }
 
 pub fn move_piece_system(
@@ -212,7 +244,8 @@ pub fn move_piece_system(
 				selected_piece.0 = None;
 				ev_legal.send(LegalMoveEvent(None));
 				ev_move.send(MoveEvent { pos: None });
-			} else if clicked_piece.piece != None && clicked_piece.color == Some(current_state.0) {
+			} else if clicked_piece.piece.is_some() && clicked_piece.color == Some(current_state.0)
+			{
 				//if piece isnt selected select it
 				selected_piece.0 = Some(clicked_piece);
 				if let Some(selected) = selected_piece.0 {
@@ -224,7 +257,7 @@ pub fn move_piece_system(
 							move_info.direction_offsets,
 							&board.board,
 							selected_index,
-							&current_state.0.clone(),
+							current_state.0,
 						);
 						ev_legal.send(LegalMoveEvent(Some(legal_moves)));
 					}
@@ -243,7 +276,7 @@ pub fn move_piece_system(
 						move_info.direction_offsets,
 						&board.board,
 						selected_index,
-						&current_state.0.clone(),
+						current_state.0,
 					);
 
 					ev_legal.send(LegalMoveEvent(Some(legal_moves.clone())));
@@ -280,7 +313,7 @@ pub fn move_piece_system(
 						move_info.direction_offsets,
 						&board.board,
 						selected_index,
-						&current_state.0.clone(),
+						current_state.0,
 					);
 
 					let clicked_index = row * BOARD_SIZE + col;
@@ -314,7 +347,7 @@ pub fn move_piece_system(
 								});
 							}
 							if *piece.as_ref() == clicked_piece
-								&& clicked_piece.color != None && clicked_piece.color
+								&& clicked_piece.color.is_some() && clicked_piece.color
 								!= Some(current_state.0)
 							{
 								commands.entity(entity).despawn_recursive();

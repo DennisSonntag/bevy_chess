@@ -67,12 +67,12 @@ pub struct Position {
 }
 
 impl Position {
-	pub fn new(row: i8, col: i8) -> Self {
+	pub const fn new(row: i8, col: i8) -> Self {
 		Self { row, col }
 	}
 }
 
-#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct Piece {
 	pub pos: Option<Position>,
 	pub amount_moved: u32,
@@ -80,33 +80,6 @@ pub struct Piece {
 	pub color: Option<PieceColor>,
 }
 
-impl Default for Piece {
-	fn default() -> Self {
-		Self {
-			pos: None,
-			amount_moved: 0,
-			color: None,
-			piece: None,
-		}
-	}
-}
-
-// #[derive(Debug, Clone, Eq, PartialEq, Hash, Default, States)]
-// pub enum Turn {
-// 	#[default]
-// 	White,
-// 	Black,
-// }
-//
-// impl PartialEq<Turn> for PieceColor {
-// 	fn eq(&self, other: &Turn) -> bool {
-// 		matches!(
-// 			(self, other),
-// 			(Self::White, Turn::White) | (Self::Black, Turn::Black)
-// 		)
-// 	}
-// }
-//
 impl FromWorld for BoardResource {
 	fn from_world(_: &mut World) -> Self {
 		let board =
