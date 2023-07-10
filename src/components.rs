@@ -2,6 +2,8 @@
 
 use bevy::prelude::*;
 use std::collections::HashMap;
+use std::string::ToString;
+use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::BOARD_SIZE;
 
@@ -12,10 +14,12 @@ pub struct BoardResource {
 
 pub struct TakeEvent;
 
+#[derive(Default)]
 pub struct MoveEvent {
 	pub pos: Option<Position>,
 }
 
+#[derive(Default)]
 pub struct LegalMoveEvent(pub Option<Vec<i8>>);
 
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
@@ -24,14 +28,14 @@ pub struct LegalMoveMarker;
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct MovedSquare;
 
+#[derive(Default)]
 pub struct HoverEvent {
 	pub pos: Option<Position>,
 }
-
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct HoverSquare;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, Display)]
 pub enum Pieces {
 	King,
 	Queen,
@@ -92,13 +96,24 @@ impl FromWorld for BoardResource {
 fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 	let mut board: [Piece; 64] = [Piece::default(); 64];
 
-	let mut piece_type_from_symbol: HashMap<char, Pieces> = HashMap::new();
-	piece_type_from_symbol.insert('k', Pieces::King);
-	piece_type_from_symbol.insert('p', Pieces::Pawn);
-	piece_type_from_symbol.insert('n', Pieces::Knight);
-	piece_type_from_symbol.insert('b', Pieces::Bishop);
-	piece_type_from_symbol.insert('r', Pieces::Rook);
-	piece_type_from_symbol.insert('q', Pieces::Queen);
+	let piece_type_from_symbol: HashMap<char, Pieces> = Pieces::iter()
+		.map(|x| {
+			(
+				match x {
+					Pieces::Knight => 'n',
+					_ => x
+						.to_string()
+						.chars()
+						.next()
+						.unwrap()
+						.to_lowercase()
+						.next()
+						.unwrap(),
+				},
+				x,
+			)
+		})
+		.collect();
 
 	let fen_data: Vec<&str> = fen.split(' ').collect();
 	let fen_board: Vec<&str> = fen_data[0].split('/').collect();

@@ -242,8 +242,8 @@ pub fn move_piece_system(
 			if Some(clicked_piece) == selected_piece.0 && selected_piece.0.is_some() {
 				// if piece is already selected deselect it
 				selected_piece.0 = None;
-				ev_legal.send(LegalMoveEvent(None));
-				ev_move.send(MoveEvent { pos: None });
+				ev_legal.send(LegalMoveEvent::default());
+				ev_move.send(MoveEvent::default());
 			} else if clicked_piece.piece.is_some() && clicked_piece.color == Some(current_state.0)
 			{
 				//if piece isnt selected select it
@@ -262,8 +262,8 @@ pub fn move_piece_system(
 						ev_legal.send(LegalMoveEvent(Some(legal_moves)));
 					}
 				}
-				ev_move.send(MoveEvent { pos: None });
-				ev_hover.send(HoverEvent { pos: None });
+				ev_move.send(MoveEvent::default());
+				ev_hover.send(HoverEvent::default());
 			};
 		}
 		if mouse_button_input.pressed(MouseButton::Left) {
@@ -289,7 +289,7 @@ pub fn move_piece_system(
 							pos: Some(Position::new(row, col)),
 						});
 					} else if clicked_piece.color == Some(current_state.0) {
-						ev_hover.send(HoverEvent { pos: None });
+						ev_hover.send(HoverEvent::default());
 					}
 				}
 				for (piece, mut transform, _) in pieces.iter_mut() {
@@ -302,7 +302,7 @@ pub fn move_piece_system(
 			}
 		}
 		if mouse_button_input.just_released(MouseButton::Left) {
-			ev_hover.send(HoverEvent { pos: None });
+			ev_hover.send(HoverEvent::default());
 
 			if let Some(selected) = selected_piece.0 {
 				if let Some(mut position) = selected.pos {
@@ -355,7 +355,7 @@ pub fn move_piece_system(
 							}
 						}
 						selected_piece.0 = None;
-						ev_legal.send(LegalMoveEvent(None));
+						ev_legal.send(LegalMoveEvent::default());
 						next_state.set(current_state.0.not());
 					} else if selected == clicked_piece
 						|| clicked_piece.color == Some(current_state.0)
