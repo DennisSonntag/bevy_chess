@@ -26,6 +26,7 @@ need_stdout = false
 [jobs.clippy_better]
 command = [
     "cargo", "clippy",
+    "--no-deps",
     "--all-targets",
     "--color", "always",
     "--", "-W", "clippy::pedantic",

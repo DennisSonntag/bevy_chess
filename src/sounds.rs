@@ -1,4 +1,5 @@
-use bevy::prelude::*;
+#![allow(clippy::needless_pass_by_value)]
+use bevy::{audio::Volume, prelude::*};
 
 use crate::components::{MoveEvent, TakeEvent};
 
@@ -6,41 +7,46 @@ pub struct SoundPlugin;
 
 impl Plugin for SoundPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_startup_system(play_start_sound)
-			.add_system(play_take_sound_system)
-			.add_system(play_move_sound_system);
+		app.add_systems(Update, (play_take_sound_system, play_move_sound_system))
+			.add_systems(Startup, play_start_sound);
 	}
 }
 
-#[allow(clippy::needless_pass_by_value)]
+#[derive(Component)]
+struct MyMusic;
+
 pub fn play_move_sound_system(
 	mut ev_move: EventReader<MoveEvent>,
 	mut ev_take: EventReader<TakeEvent>,
 	asset_server: Res<AssetServer>,
-	audio: Res<Audio>,
+	mut commands: Commands,
 ) {
 	for event in ev_move.iter() {
 		if event.pos.is_some() && ev_take.iter().count() == 0 {
-			let music = asset_server.load("sounds/move.ogg");
-			audio.play(music);
+			commands.spawn(AudioBundle {
+				source: asset_server.load("sounds/move.ogg"),
+				settings: PlaybackSettings::ONCE.with_volume(Volume::new_absolute(0.5)),
+			});
 		}
 	}
 }
 
-#[allow(clippy::needless_pass_by_value)]
 pub fn play_take_sound_system(
 	mut ev_take: EventReader<TakeEvent>,
 	asset_server: Res<AssetServer>,
-	audio: Res<Audio>,
+	mut commands: Commands,
 ) {
 	if ev_take.iter().count() > 0 {
-		let music = asset_server.load("sounds/take.ogg");
-		audio.play(music);
+		commands.spawn(AudioBundle {
+			source: asset_server.load("sounds/take.ogg"),
+			settings: PlaybackSettings::ONCE.with_volume(Volume::new_absolute(0.5)),
+		});
 	}
 }
 
-#[allow(clippy::needless_pass_by_value)]
-pub fn play_start_sound(asset_server: Res<AssetServer>, audio: Res<Audio>) {
-	let music = asset_server.load("sounds/start.ogg");
-	audio.play(music);
+pub fn play_start_sound(asset_server: Res<AssetServer>, mut commands: Commands) {
+	commands.spawn(AudioBundle {
+		source: asset_server.load("sounds/start.ogg"),
+		settings: PlaybackSettings::ONCE.with_volume(Volume::new_absolute(0.5)),
+	});
 }

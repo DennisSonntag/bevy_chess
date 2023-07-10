@@ -26,11 +26,16 @@ pub struct PiecePlugin;
 
 impl Plugin for PiecePlugin {
 	fn build(&self, app: &mut App) {
-		app.add_system(move_piece_system)
-			.add_system(highlight_moved_system)
-			.add_system(highlight_selected_system)
-			.add_system(highlight_hover_system)
-			.add_system(highlight_legal_moves_system);
+		app.add_systems(
+			Update,
+			(
+				move_piece_system,
+				highlight_moved_system,
+				highlight_selected_system,
+				highlight_hover_system,
+				highlight_legal_moves_system,
+			),
+		);
 	}
 }
 
@@ -233,8 +238,9 @@ pub fn move_piece_system(
 	#[allow(clippy::cast_possible_truncation)]
 	if let Some(position) = window.cursor_position() {
 		let col = ((position[0] / 75.).floor()) as i8;
-		let row = ((position[1] / 75.).floor()) as i8;
+		let row = 7 - ((position[1] / 75.).floor()) as i8;
 
+		let turn_color = *current_state.get();
 		let index = (row * BOARD_SIZE + col) as usize;
 
 		let clicked_piece = board.board[index];
@@ -244,8 +250,7 @@ pub fn move_piece_system(
 				selected_piece.0 = None;
 				ev_legal.send(LegalMoveEvent::default());
 				ev_move.send(MoveEvent::default());
-			} else if clicked_piece.piece.is_some() && clicked_piece.color == Some(current_state.0)
-			{
+			} else if clicked_piece.piece.is_some() && clicked_piece.color == Some(turn_color) {
 				//if piece isnt selected select it
 				selected_piece.0 = Some(clicked_piece);
 				if let Some(selected) = selected_piece.0 {
@@ -257,7 +262,7 @@ pub fn move_piece_system(
 							move_info.direction_offsets,
 							&board.board,
 							selected_index,
-							current_state.0,
+							turn_color,
 						);
 						ev_legal.send(LegalMoveEvent(Some(legal_moves)));
 					}
@@ -276,26 +281,26 @@ pub fn move_piece_system(
 						move_info.direction_offsets,
 						&board.board,
 						selected_index,
-						current_state.0,
+						turn_color,
 					);
 
 					ev_legal.send(LegalMoveEvent(Some(legal_moves.clone())));
 					let clicked_index = row * BOARD_SIZE + col;
 
-					if clicked_piece.color != Some(current_state.0)
+					if clicked_piece.color != Some(turn_color)
 						&& legal_moves.contains(&(clicked_index))
 					{
 						ev_hover.send(HoverEvent {
 							pos: Some(Position::new(row, col)),
 						});
-					} else if clicked_piece.color == Some(current_state.0) {
+					} else if clicked_piece.color == Some(turn_color) {
 						ev_hover.send(HoverEvent::default());
 					}
 				}
 				for (piece, mut transform, _) in pieces.iter_mut() {
 					if Some(*piece) == selected_piece.0 {
 						transform.translation.x = position.x - (WINDOW_SIZE / 2.);
-						transform.translation.y = position.y - (WINDOW_SIZE / 2.);
+						transform.translation.y = -position.y + (WINDOW_SIZE / 2.);
 						transform.translation.z = 30.;
 					}
 				}
@@ -313,12 +318,12 @@ pub fn move_piece_system(
 						move_info.direction_offsets,
 						&board.board,
 						selected_index,
-						current_state.0,
+						turn_color,
 					);
 
 					let clicked_index = row * BOARD_SIZE + col;
 					if selected != clicked_piece
-						&& clicked_piece.color != Some(current_state.0)
+						&& clicked_piece.color != Some(turn_color)
 						&& legal_moves.contains(&{ clicked_index })
 					{
 						for (mut piece, mut transform, entity) in pieces.iter_mut() {
@@ -348,7 +353,7 @@ pub fn move_piece_system(
 							}
 							if *piece.as_ref() == clicked_piece
 								&& clicked_piece.color.is_some() && clicked_piece.color
-								!= Some(current_state.0)
+								!= Some(turn_color)
 							{
 								commands.entity(entity).despawn_recursive();
 								ev_take.send(TakeEvent);
@@ -356,9 +361,9 @@ pub fn move_piece_system(
 						}
 						selected_piece.0 = None;
 						ev_legal.send(LegalMoveEvent::default());
-						next_state.set(current_state.0.not());
+						next_state.set(turn_color.not());
 					} else if selected == clicked_piece
-						|| clicked_piece.color == Some(current_state.0)
+						|| clicked_piece.color == Some(turn_color)
 						|| !legal_moves.contains(&{ clicked_index })
 					{
 						for (piece, mut transform, _) in pieces.iter_mut() {

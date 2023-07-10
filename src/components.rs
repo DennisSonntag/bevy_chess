@@ -12,14 +12,15 @@ pub struct BoardResource {
 	pub board: [Piece; 64],
 }
 
+#[derive(Event)]
 pub struct TakeEvent;
 
-#[derive(Default)]
+#[derive(Default, Event)]
 pub struct MoveEvent {
 	pub pos: Option<Position>,
 }
 
-#[derive(Default)]
+#[derive(Default, Event)]
 pub struct LegalMoveEvent(pub Option<Vec<i8>>);
 
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
@@ -28,7 +29,7 @@ pub struct LegalMoveMarker;
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct MovedSquare;
 
-#[derive(Default)]
+#[derive(Default, Event)]
 pub struct HoverEvent {
 	pub pos: Option<Position>,
 }

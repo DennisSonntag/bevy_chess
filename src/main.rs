@@ -38,7 +38,7 @@ fn main() {
 			exit_condition: ExitCondition::OnPrimaryClosed,
 			..Default::default()
 		}))
-		.add_plugin(ShapePlugin)
+		.add_plugins(ShapePlugin)
 		.insert_resource(Msaa::Sample8)
 		.init_resource::<BoardResource>()
 		.init_resource::<SelectedPiece>()
@@ -48,11 +48,12 @@ fn main() {
 		.add_event::<TakeEvent>()
 		.add_event::<HoverEvent>()
 		.add_event::<LegalMoveEvent>()
-		.add_startup_system(setup_camera)
-		.add_startup_system(spawn_board_system)
-		.add_startup_system(spawn_piece_sprites_system)
-		.add_plugin(SoundPlugin)
-		.add_plugin(PiecePlugin)
+		.add_systems(
+			Startup,
+			(setup_camera, spawn_board_system, spawn_piece_sprites_system),
+		)
+		.add_plugins(SoundPlugin)
+		.add_plugins(PiecePlugin)
 		.run();
 }
 
@@ -156,7 +157,6 @@ fn spawn_piece_sprites_system(
 	let texture_handle = asset_server.load("pieces.png");
 
 	for (index, piece) in board.board.iter().enumerate() {
-		// if piece.piece.is_some() {
 		if let (Some(piece_type), Some(piece_color)) = (piece.piece, piece.color) {
 			let row = i8::try_from(index).expect("could not cast index to i8") / BOARD_SIZE;
 			let col = i8::try_from(index).expect("could not cast index to i8") % BOARD_SIZE;
