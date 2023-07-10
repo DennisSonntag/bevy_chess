@@ -22,7 +22,7 @@ pub fn play_move_sound_system(
 	mut commands: Commands,
 ) {
 	for event in ev_move.iter() {
-		if event.pos.is_some() && ev_take.iter().count() == 0 {
+		if event.0.is_some() && ev_take.iter().count() == 0 {
 			commands.spawn(AudioBundle {
 				source: asset_server.load("sounds/move.ogg"),
 				settings: PlaybackSettings::ONCE.with_volume(Volume::new_absolute(0.5)),

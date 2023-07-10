@@ -243,7 +243,7 @@ pub fn move_piece_system(
 		let turn_color = *current_state.get();
 		let index = (row * BOARD_SIZE + col) as usize;
 
-		let clicked_piece = board.board[index];
+		let clicked_piece = board.0[index];
 		if mouse_button_input.just_pressed(MouseButton::Left) {
 			if Some(clicked_piece) == selected_piece.0 && selected_piece.0.is_some() {
 				// if piece is already selected deselect it
@@ -260,7 +260,7 @@ pub fn move_piece_system(
 						let legal_moves = get_legal_moves(
 							&move_info.clone().num_squares_to_edge,
 							move_info.direction_offsets,
-							&board.board,
+							&board.0,
 							selected_index,
 							turn_color,
 						);
@@ -279,7 +279,7 @@ pub fn move_piece_system(
 					let legal_moves = get_legal_moves(
 						&move_info.clone().num_squares_to_edge,
 						move_info.direction_offsets,
-						&board.board,
+						&board.0,
 						selected_index,
 						turn_color,
 					);
@@ -290,9 +290,7 @@ pub fn move_piece_system(
 					if clicked_piece.color != Some(turn_color)
 						&& legal_moves.contains(&(clicked_index))
 					{
-						ev_hover.send(HoverEvent {
-							pos: Some(Position::new(row, col)),
-						});
+						ev_hover.send(HoverEvent(Some(Position::new(row, col))));
 					} else if clicked_piece.color == Some(turn_color) {
 						ev_hover.send(HoverEvent::default());
 					}
@@ -316,7 +314,7 @@ pub fn move_piece_system(
 					let legal_moves = get_legal_moves(
 						&move_info.clone().num_squares_to_edge,
 						move_info.direction_offsets,
-						&board.board,
+						&board.0,
 						selected_index,
 						turn_color,
 					);
@@ -342,14 +340,12 @@ pub fn move_piece_system(
 
 								let old_index = (position.row * BOARD_SIZE + position.col) as usize;
 
-								board.board[old_index] = Piece::default();
+								board.0[old_index] = Piece::default();
 
-								board.board[index] = *piece;
-								board.board[index].pos = Some(new_position);
+								board.0[index] = *piece;
+								board.0[index].pos = Some(new_position);
 
-								ev_move.send(MoveEvent {
-									pos: Some(new_position),
-								});
+								ev_move.send(MoveEvent(Some(new_position)));
 							}
 							if *piece.as_ref() == clicked_piece
 								&& clicked_piece.color.is_some() && clicked_piece.color
@@ -419,7 +415,7 @@ pub fn highlight_moved_system(
 		.get_single_mut()
 		.expect("failed to get moved_square");
 	for event in ev_move.iter() {
-		if let Some(position) = event.pos {
+		if let Some(position) = event.0 {
 			moved_square.1.translation.x = f32::from(position.col)
 				.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
 				+ (SQUARE_SIZE / 2.);
@@ -443,7 +439,7 @@ pub fn highlight_hover_system(
 		.get_single_mut()
 		.expect("failed to get hover_square");
 	for event in ev_move.iter() {
-		if let Some(position) = event.pos {
+		if let Some(position) = event.0 {
 			hover_square.1.translation.x = f32::from(position.col)
 				.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
 				+ (SQUARE_SIZE / 2.);

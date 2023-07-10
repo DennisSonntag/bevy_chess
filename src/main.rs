@@ -156,7 +156,7 @@ fn spawn_piece_sprites_system(
 ) {
 	let texture_handle = asset_server.load("pieces.png");
 
-	for (index, piece) in board.board.iter().enumerate() {
+	for (index, piece) in board.0.iter().enumerate() {
 		if let (Some(piece_type), Some(piece_color)) = (piece.piece, piece.color) {
 			let row = i8::try_from(index).expect("could not cast index to i8") / BOARD_SIZE;
 			let col = i8::try_from(index).expect("could not cast index to i8") % BOARD_SIZE;

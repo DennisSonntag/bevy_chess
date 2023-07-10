@@ -8,20 +8,19 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use crate::BOARD_SIZE;
 
 #[derive(Resource, Debug)]
-pub struct BoardResource {
-	pub board: [Piece; 64],
-}
+pub struct BoardResource(pub [Piece; 64]);
 
 #[derive(Event)]
 pub struct TakeEvent;
 
 #[derive(Default, Event)]
-pub struct MoveEvent {
-	pub pos: Option<Position>,
-}
+pub struct MoveEvent(pub Option<Position>);
 
 #[derive(Default, Event)]
 pub struct LegalMoveEvent(pub Option<Vec<i8>>);
+
+#[derive(Default, Event)]
+pub struct HoverEvent(pub Option<Position>);
 
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct LegalMoveMarker;
@@ -29,10 +28,6 @@ pub struct LegalMoveMarker;
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct MovedSquare;
 
-#[derive(Default, Event)]
-pub struct HoverEvent {
-	pub pos: Option<Position>,
-}
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct HoverSquare;
 
@@ -90,7 +85,7 @@ impl FromWorld for BoardResource {
 		let board =
 			load_position_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-		Self { board }
+		Self(board)
 	}
 }
 
