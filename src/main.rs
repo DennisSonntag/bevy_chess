@@ -1,4 +1,10 @@
-#![allow(dead_code, unused, clippy::cast_sign_loss, clippy::cast_precision_loss)]
+#![allow(
+	dead_code,
+	unused,
+	clippy::cast_sign_loss,
+	clippy::cast_precision_loss,
+	clippy::needless_pass_by_value
+)]
 
 use bevy::{
 	prelude::*,
@@ -7,12 +13,17 @@ use bevy::{
 };
 use bevy_prototype_lyon::prelude::*;
 
+use bevy::app::AppExit;
 use components::{
-	BoardResource, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent, MoveData, MoveEvent,
-	MovedSquare, Piece, PieceColor, Position, SelectedPiece, TakeEvent,
+	BlackTimer, BoardResource, GameTimers, HighlightSquare, HoverEvent, HoverSquare,
+	LegalMoveEvent, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Position, SelectedPiece,
+	TakeEvent, WhiteTimer,
 };
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
+
+use chrono::Duration;
+use num_traits::cast::ToPrimitive;
 
 mod components;
 mod piece;
@@ -29,7 +40,7 @@ fn main() {
 		.add_plugins(DefaultPlugins.set(WindowPlugin {
 			primary_window: Some(Window {
 				title: "chess".into(),
-				resolution: (WINDOW_SIZE, WINDOW_SIZE).into(),
+				resolution: (WINDOW_SIZE, WINDOW_SIZE + 100.).into(),
 				present_mode: PresentMode::AutoVsync,
 				fit_canvas_to_parent: true,
 				prevent_default_event_handling: false,
@@ -43,6 +54,7 @@ fn main() {
 		.init_resource::<BoardResource>()
 		.init_resource::<SelectedPiece>()
 		.init_resource::<MoveData>()
+		.init_resource::<GameTimers>()
 		.add_state::<PieceColor>()
 		.add_event::<MoveEvent>()
 		.add_event::<TakeEvent>()
@@ -50,18 +62,31 @@ fn main() {
 		.add_event::<LegalMoveEvent>()
 		.add_systems(
 			Startup,
-			(setup_camera, spawn_board_system, spawn_piece_sprites_system),
+			(
+				setup_camera,
+				spawn_board_system,
+				spawn_piece_sprites_system,
+				spawn_timers_system,
+			),
+		)
+		.add_systems(
+			Update,
+			(
+				update_white_timer_system,
+				update_black_timer_system,
+				countdown,
+			),
 		)
 		.add_plugins(SoundPlugin)
 		.add_plugins(PiecePlugin)
 		.run();
 }
 
-fn setup_camera(mut commands: Commands) {
+fn setup_camera(mut commands: Commands, mut countdown: ResMut<GameTimers>) {
 	commands.spawn(Camera2dBundle::default());
+	countdown.black.pause();
 }
 
-#[allow(clippy::needless_pass_by_value)]
 fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 	let font = asset_server.load("fonts/Roboto-Bold.ttf");
 	let text_style = TextStyle {
@@ -147,7 +172,6 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 	}
 }
 
-#[allow(clippy::needless_pass_by_value)]
 fn spawn_piece_sprites_system(
 	mut commands: Commands,
 	asset_server: Res<AssetServer>,
@@ -263,6 +287,110 @@ fn spawn_piece_sprites_system(
 			Stroke::new(Color::WHITE, 0.09),
 		))
 		.insert(HoverSquare);
+}
+
+fn spawn_timers_system(
+	mut commands: Commands,
+	asset_server: Res<AssetServer>,
+	mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+	board: ResMut<BoardResource>,
+) {
+	let font = asset_server.load("fonts/Roboto-Bold.ttf");
+	let text_style = TextStyle {
+		font,
+		font_size: 20.0,
+		color: Color::BLACK,
+	};
+	commands.spawn((
+		Text2dBundle {
+			text: Text {
+				sections: vec![TextSection::new(
+					String::from("00:00"),
+					TextStyle {
+						color: Color::WHITE,
+						..text_style.clone()
+					},
+				)],
+				..default()
+			},
+			transform: Transform::from_translation(Vec3::new(
+				50. - (WINDOW_SIZE / 2.),
+				-30. - (WINDOW_SIZE / 2.),
+				2.,
+			)),
+			text_anchor: Anchor::Center,
+			..default()
+		},
+		WhiteTimer,
+	));
+	commands.spawn((
+		Text2dBundle {
+			text: Text {
+				sections: vec![TextSection::new(
+					String::from("00:00"),
+					TextStyle {
+						color: Color::WHITE,
+						..text_style
+					},
+				)],
+				..default()
+			},
+			transform: Transform::from_translation(Vec3::new(
+				50. - (WINDOW_SIZE / 2.),
+				30. + (WINDOW_SIZE / 2.),
+				2.,
+			)),
+			text_anchor: Anchor::Center,
+			..default()
+		},
+		BlackTimer,
+	));
+}
+
+fn format_elapsed_time(seconds: u64) -> String {
+	let duration = Duration::seconds(seconds.to_i64().unwrap());
+	let minutes = duration.num_minutes();
+	let remaining_seconds = duration.num_seconds() % 60;
+
+	format!("{minutes:02}:{remaining_seconds:02}")
+}
+
+fn update_white_timer_system(
+	timers: Res<GameTimers>,
+	mut white_timer: Query<&mut Text, With<WhiteTimer>>,
+) {
+	let mut text = white_timer.get_single_mut().unwrap();
+	let seconds = timers.white.duration().as_secs() - timers.white.elapsed().as_secs();
+
+	text.sections[0].value = format_elapsed_time(seconds);
+}
+
+fn update_black_timer_system(
+	timers: Res<GameTimers>,
+	mut black_timer: Query<&mut Text, With<BlackTimer>>,
+) {
+	let mut text = black_timer.get_single_mut().unwrap();
+	let seconds = timers.black.duration().as_secs() - timers.black.elapsed().as_secs();
+
+	text.sections[0].value = format_elapsed_time(seconds);
+}
+
+fn countdown(
+	time: Res<Time>,
+	mut countdown: ResMut<GameTimers>,
+	mut ev_exit: EventWriter<AppExit>,
+) {
+	if countdown.white.finished() {
+		println!("Black WINS!!!");
+		ev_exit.send(AppExit);
+	}
+	if countdown.black.finished() {
+		println!("White WINS!!!");
+		ev_exit.send(AppExit);
+	}
+
+	countdown.white.tick(time.delta());
+	countdown.black.tick(time.delta());
 }
 
 // fn print_board(board: [Piece; 64]) {

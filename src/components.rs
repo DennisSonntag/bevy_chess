@@ -1,14 +1,44 @@
 #![allow(dead_code, unused, clippy::cast_sign_loss)]
 
 use bevy::prelude::*;
-use std::collections::HashMap;
-use std::string::ToString;
+use std::{collections::HashMap, string::ToString};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::BOARD_SIZE;
 
+#[derive(Resource)]
+pub struct GameTimers {
+    pub white: Timer,
+    pub black: Timer,
+}
+
+impl GameTimers {
+    pub fn new() -> Self {
+        Self {
+            // white: Timer::from_seconds(5. * 60., TimerMode::Once),
+            // black: Timer::from_seconds(5. * 60., TimerMode::Once),
+            white: Timer::from_seconds(10., TimerMode::Once),
+            black: Timer::from_seconds(10., TimerMode::Once),
+        }
+    }
+}
+
+impl Default for GameTimers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
+
 #[derive(Resource, Debug)]
 pub struct BoardResource(pub [Option<Piece>; 64]);
+
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
+pub struct WhiteTimer;
+
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
+pub struct BlackTimer;
 
 #[derive(Event)]
 pub struct TakeEvent;

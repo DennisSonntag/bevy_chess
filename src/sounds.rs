@@ -1,4 +1,4 @@
-#![allow(clippy::needless_pass_by_value)]
+#!: Vec<&str>[allow(clippy::needless_pass_by_value)]
 use bevy::{audio::Volume, prelude::*};
 
 use crate::components::{MoveEvent, TakeEvent};
