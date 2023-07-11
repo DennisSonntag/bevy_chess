@@ -8,7 +8,7 @@ use strum::{Display, EnumIter, IntoEnumIterator};
 use crate::BOARD_SIZE;
 
 #[derive(Resource, Debug)]
-pub struct BoardResource(pub [Piece; 64]);
+pub struct BoardResource(pub [Option<Piece>; 64]);
 
 #[derive(Event)]
 pub struct TakeEvent;
@@ -72,12 +72,12 @@ impl Position {
 	}
 }
 
-#[derive(Default, Debug, Clone, Copy, Component, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct Piece {
-	pub pos: Option<Position>,
+	pub pos: Position,
 	pub amount_moved: u32,
-	pub piece: Option<Pieces>,
-	pub color: Option<PieceColor>,
+	pub piece_type: Pieces,
+	pub color: PieceColor,
 }
 
 impl FromWorld for BoardResource {
@@ -89,8 +89,8 @@ impl FromWorld for BoardResource {
 	}
 }
 
-fn load_position_from_fen(fen: &str) -> [Piece; 64] {
-	let mut board: [Piece; 64] = [Piece::default(); 64];
+fn load_position_from_fen(fen: &str) -> [Option<Piece>; 64] {
+	let mut board = [None; 64];
 
 	let piece_type_from_symbol: HashMap<char, Pieces> = Pieces::iter()
 		.map(|x| {
@@ -130,11 +130,9 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 				col += 1;
 			}
 			let piece_color = if char.is_uppercase() {
-				Some(PieceColor::White)
-			} else if char.is_lowercase() {
-				Some(PieceColor::Black)
+				PieceColor::White
 			} else {
-				None
+				PieceColor::Black
 			};
 
 			let lower_char = &char
@@ -143,23 +141,18 @@ fn load_position_from_fen(fen: &str) -> [Piece; 64] {
 				.chars()
 				.next()
 				.expect("could not get first lowercase character");
+			if piece_type_from_symbol.contains_key(lower_char) {
+				let piece_type = *piece_type_from_symbol
+					.get(lower_char)
+					.expect("value with key lower_char does not exist");
 
-			let piece_type = if piece_type_from_symbol.contains_key(lower_char) {
-				Some(
-					*piece_type_from_symbol
-						.get(lower_char)
-						.expect("value with key lower_char does not exist"),
-				)
-			} else {
-				None
+				board[(row * BOARD_SIZE + col) as usize] = Some(Piece {
+					piece_type,
+					color: piece_color,
+					amount_moved: 0,
+					pos: Position::new(row, col),
+				});
 			};
-
-			board[(row * BOARD_SIZE + col) as usize] = Piece {
-				piece: piece_type,
-				color: piece_color,
-				amount_moved: 0,
-				pos: Some(Position::new(row, col)),
-			}
 		}
 	}
 

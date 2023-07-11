@@ -33,10 +33,10 @@ fn main() {
 				present_mode: PresentMode::AutoVsync,
 				fit_canvas_to_parent: true,
 				prevent_default_event_handling: false,
-				..Default::default()
+				..default()
 			}),
 			exit_condition: ExitCondition::OnPrimaryClosed,
-			..Default::default()
+			..default()
 		}))
 		.add_plugins(ShapePlugin)
 		.insert_resource(Msaa::Sample8)
@@ -111,7 +111,7 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 								..text_style.clone()
 							},
 						)],
-						..Default::default()
+						..default()
 					},
 					transform: Transform::from_translation(Vec3::new(
 						SQUARE_SIZE.mul_add(f32::from(col) - 1., -(WINDOW_SIZE / 2.) + 67.),
@@ -132,7 +132,7 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 								..text_style.clone()
 							},
 						)],
-						..Default::default()
+						..default()
 					},
 					transform: Transform::from_translation(Vec3::new(
 						SQUARE_SIZE.mul_add(f32::from(col) - 1., -(WINDOW_SIZE / 2.) + 10.),
@@ -157,7 +157,7 @@ fn spawn_piece_sprites_system(
 	let texture_handle = asset_server.load("pieces.png");
 
 	for (index, piece) in board.0.iter().enumerate() {
-		if let (Some(piece_type), Some(piece_color)) = (piece.piece, piece.color) {
+		if let Some(piece) = piece {
 			let row = i8::try_from(index).expect("could not cast index to i8") / BOARD_SIZE;
 			let col = i8::try_from(index).expect("could not cast index to i8") % BOARD_SIZE;
 
@@ -168,8 +168,8 @@ fn spawn_piece_sprites_system(
 				1,
 				None,
 				Some(Vec2::new(
-					(piece_type as i32) as f32 * 333.3,
-					(piece_color as i32) as f32 * 333.3,
+					(piece.piece_type as i32) as f32 * 333.3,
+					(piece.color as i32) as f32 * 333.3,
 				)),
 			);
 			let texture_atlas_handle = texture_atlases.add(texture_atlas);
@@ -192,10 +192,10 @@ fn spawn_piece_sprites_system(
 					..default()
 				})
 				.insert(Piece {
-					piece: piece.piece,
+					piece_type: piece.piece_type,
 					color: piece.color,
 					amount_moved: piece.amount_moved,
-					pos: Some(Position::new(row, col)),
+					pos: Position::new(row, col),
 				});
 		}
 	}
