@@ -39,7 +39,7 @@ impl Plugin for PiecePlugin {
 	}
 }
 
-pub struct LegalMoveGen<'a> {
+struct LegalMoveGen<'a> {
 	piece: Piece,
 	start_square: i8,
 	squares_to_edge: &'a HashMap<usize, Vec<i8>>,
@@ -50,7 +50,7 @@ pub struct LegalMoveGen<'a> {
 }
 
 impl LegalMoveGen<'_> {
-	pub fn sliding_moves(&mut self) {
+	fn sliding_moves(&mut self) {
 		// if let Some(piece_type) = self.piece.piece_type {
 		let start_dir_index = if self.piece.piece_type == Pieces::Bishop {
 			4
@@ -90,7 +90,7 @@ impl LegalMoveGen<'_> {
 		}
 	}
 
-	pub fn pawn_moves(&mut self) {
+	fn pawn_moves(&mut self) {
 		let valid_offsets = if self.piece.color == PieceColor::White {
 			([8, 16], [9, 7])
 		} else {
@@ -140,7 +140,7 @@ impl LegalMoveGen<'_> {
 		}
 	}
 
-	pub fn knight_moves(&mut self) {
+	fn knight_moves(&mut self) {
 		let directions: [(i8, i8); 8] = [
 			(1, 2),
 			(2, 1),
@@ -163,7 +163,7 @@ impl LegalMoveGen<'_> {
 			}
 		}
 	}
-	pub fn king_moves(&mut self) {
+	fn king_moves(&mut self) {
 		for (idx, val) in self.direction_offsets.iter().enumerate() {
 			if self
 				.squares_to_edge
@@ -212,7 +212,7 @@ fn get_legal_moves(
 	legal_move_gen.moves
 }
 
-pub fn move_piece_system(
+fn move_piece_system(
 	mouse_button_input: Res<Input<MouseButton>>,
 	windows: Query<&Window>,
 	mut board: ResMut<BoardResource>,
@@ -373,7 +373,7 @@ pub fn move_piece_system(
 	}
 }
 
-pub fn highlight_selected_system(
+fn highlight_selected_system(
 	selected: Res<SelectedPiece>,
 	mut highlight_square: Query<(&HighlightSquare, &mut Transform)>,
 ) {
@@ -397,7 +397,7 @@ pub fn highlight_selected_system(
 	}
 }
 
-pub fn highlight_moved_system(
+fn highlight_moved_system(
 	mut moved_square: Query<(&MovedSquare, &mut Transform)>,
 	mut ev_move: EventReader<MoveEvent>,
 ) {
@@ -421,7 +421,7 @@ pub fn highlight_moved_system(
 	}
 }
 
-pub fn highlight_hover_system(
+fn highlight_hover_system(
 	mut hover_square: Query<(&HoverSquare, &mut Transform)>,
 	mut ev_move: EventReader<HoverEvent>,
 ) {
@@ -445,7 +445,7 @@ pub fn highlight_hover_system(
 	}
 }
 
-pub fn highlight_legal_moves_system(
+fn highlight_legal_moves_system(
 	mut ev_legal: EventReader<LegalMoveEvent>,
 	mut commands: Commands,
 	mut materials: ResMut<Assets<ColorMaterial>>,

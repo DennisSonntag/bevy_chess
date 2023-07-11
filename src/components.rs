@@ -82,10 +82,9 @@ pub struct Piece {
 
 impl FromWorld for BoardResource {
 	fn from_world(_: &mut World) -> Self {
-		let board =
-			load_position_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-
-		Self(board)
+		Self(load_position_from_fen(
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		))
 	}
 }
 

@@ -12,10 +12,7 @@ impl Plugin for SoundPlugin {
 	}
 }
 
-#[derive(Component)]
-struct MyMusic;
-
-pub fn play_move_sound_system(
+fn play_move_sound_system(
 	mut ev_move: EventReader<MoveEvent>,
 	mut ev_take: EventReader<TakeEvent>,
 	asset_server: Res<AssetServer>,
@@ -31,7 +28,7 @@ pub fn play_move_sound_system(
 	}
 }
 
-pub fn play_take_sound_system(
+fn play_take_sound_system(
 	mut ev_take: EventReader<TakeEvent>,
 	asset_server: Res<AssetServer>,
 	mut commands: Commands,
@@ -44,7 +41,7 @@ pub fn play_take_sound_system(
 	}
 }
 
-pub fn play_start_sound(asset_server: Res<AssetServer>, mut commands: Commands) {
+fn play_start_sound(asset_server: Res<AssetServer>, mut commands: Commands) {
 	commands.spawn(AudioBundle {
 		source: asset_server.load("sounds/start.ogg"),
 		settings: PlaybackSettings::ONCE.with_volume(Volume::new_absolute(0.5)),
