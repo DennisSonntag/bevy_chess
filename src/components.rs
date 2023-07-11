@@ -113,8 +113,8 @@ fn load_position_from_fen(fen: &str) -> [Option<Piece>; 64] {
 	let fen_data: Vec<&str> = fen.split(' ').collect();
 	let fen_board: Vec<&str> = fen_data[0].split('/').collect();
 
-	let mut col: i8 = 0;
-	let mut row: i8 = BOARD_SIZE;
+	let mut col = 0;
+	let mut row = BOARD_SIZE;
 
 	for row_data in fen_board {
 		col = -1;

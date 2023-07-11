@@ -141,7 +141,7 @@ impl LegalMoveGen<'_> {
 	}
 
 	fn knight_moves(&mut self) {
-		let directions: [(i8, i8); 8] = [
+		let directions = [
 			(1, 2),
 			(2, 1),
 			(-1, 2),
@@ -191,7 +191,7 @@ fn get_legal_moves(
 	start_square: i8,
 	turn_color: PieceColor,
 ) -> Vec<i8> {
-	let mut moves: Vec<i8> = Vec::new();
+	let mut moves = Vec::new();
 	let piece = board[start_square as usize].unwrap();
 	let mut legal_move_gen = LegalMoveGen {
 		piece,
@@ -421,7 +421,7 @@ fn highlight_moved_system(
 	}
 }
 
-fn highlight_hover_system(
+ fn highlight_hover_system(
 	mut hover_square: Query<(&HoverSquare, &mut Transform)>,
 	mut ev_move: EventReader<HoverEvent>,
 ) {
