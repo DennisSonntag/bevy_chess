@@ -99,6 +99,12 @@ impl LegalMoveGen<'_> {
 			let target_square = (self.start_square + offset);
 			let piece_on_target_square = self.board[target_square as usize];
 
+			if offset.abs() == 8
+				&& piece_on_target_square.is_some_and(|x| x.color != self.turn_color)
+			{
+				break;
+			}
+
 			// Blocked by friendly piece, so can't move any further in this direction
 			if piece_on_target_square.is_some_and(|x| x.color == self.turn_color) {
 				break;
