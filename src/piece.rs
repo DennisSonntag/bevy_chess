@@ -162,7 +162,12 @@ impl LegalMoveGen<'_> {
 			let new_col = self.piece.pos.col + dir_y;
 
 			if (0..8).contains(&new_row) && (0..8).contains(&new_col) {
-				self.moves.push(calculate_index(new_row, new_col));
+				let index = calculate_index(new_row, new_col);
+				let piece_on_target_square = self.board[index as usize];
+				if piece_on_target_square.is_some_and(|x| x.color == self.piece.color) {
+					continue;
+				}
+				self.moves.push(index);
 			}
 		}
 	}
