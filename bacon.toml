@@ -31,8 +31,7 @@ command = [
     "--color", "always",
     "--", "-W", "clippy::pedantic",
     "-W", "clippy::nursery",
-    "-W", "clippy::unwrap_used"
-
+    # "-W", "clippy::unwrap_used"
 ]
 need_stdout = false
 

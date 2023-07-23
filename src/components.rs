@@ -4,35 +4,48 @@ use bevy::prelude::*;
 use std::{collections::HashMap, string::ToString};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::BOARD_SIZE;
+use crate::{BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE};
+
+pub struct Coord;
+
+impl Coord {
+	pub fn to_win(pos: f32) -> f32 {
+		pos.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
+	}
+	pub fn to_win_piece(pos: i8) -> f32 {
+		f32::from(pos).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.)
+	}
+}
 
 #[derive(Resource)]
 pub struct GameTimers {
-    pub white: Timer,
-    pub black: Timer,
+	pub white: Timer,
+	pub black: Timer,
 }
 
 impl GameTimers {
-    pub fn new() -> Self {
-        Self {
-            // white: Timer::from_seconds(5. * 60., TimerMode::Once),
-            // black: Timer::from_seconds(5. * 60., TimerMode::Once),
-            white: Timer::from_seconds(10., TimerMode::Once),
-            black: Timer::from_seconds(10., TimerMode::Once),
-        }
-    }
+	pub fn new() -> Self {
+		Self {
+			white: Timer::from_seconds(5. * 60., TimerMode::Once),
+			black: Timer::from_seconds(5. * 60., TimerMode::Once),
+		}
+	}
 }
 
 impl Default for GameTimers {
-    fn default() -> Self {
-        Self::new()
-    }
+	fn default() -> Self {
+		Self::new()
+	}
 }
-
-
 
 #[derive(Resource, Debug)]
 pub struct BoardResource(pub [Option<Piece>; 64]);
+
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
+pub struct BlackTakenPieceText;
+
+#[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
+pub struct WhiteTakenPieceText;
 
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct WhiteTimer;
@@ -71,6 +84,23 @@ pub enum Pieces {
 	Pawn,
 }
 
+impl Pieces {
+	pub fn get_letter(self) -> String {
+		match self {
+			Self::Knight => String::from('n'),
+			_ => self
+				.to_string()
+				.chars()
+				.next()
+				.unwrap()
+				.to_lowercase()
+				.next()
+				.unwrap()
+				.to_string(),
+		}
+	}
+}
+
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct HighlightSquare;
 
@@ -102,6 +132,21 @@ impl Position {
 	}
 }
 
+#[derive(Resource)]
+pub struct TakenPieces {
+	pub white: Vec<String>,
+	pub black: Vec<String>,
+}
+
+impl FromWorld for TakenPieces {
+	fn from_world(_: &mut World) -> Self {
+		Self {
+			white: Vec::new(),
+			black: Vec::new(),
+		}
+	}
+}
+
 #[derive(Debug, Clone, Copy, Component, PartialEq, Eq)]
 pub struct Piece {
 	pub pos: Position,
@@ -122,22 +167,7 @@ fn load_position_from_fen(fen: &str) -> [Option<Piece>; 64] {
 	let mut board = [None; 64];
 
 	let piece_type_from_symbol: HashMap<char, Pieces> = Pieces::iter()
-		.map(|x| {
-			(
-				match x {
-					Pieces::Knight => 'n',
-					_ => x
-						.to_string()
-						.chars()
-						.next()
-						.unwrap()
-						.to_lowercase()
-						.next()
-						.unwrap(),
-				},
-				x,
-			)
-		})
+		.map(|x| (x.get_letter().chars().next().unwrap(), x))
 		.collect();
 
 	let fen_data: Vec<&str> = fen.split(' ').collect();
@@ -164,24 +194,18 @@ fn load_position_from_fen(fen: &str) -> [Option<Piece>; 64] {
 				PieceColor::Black
 			};
 
-			let lower_char = &char
-				.to_lowercase()
-				.to_string()
-				.chars()
-				.next()
-				.expect("could not get first lowercase character");
-			if piece_type_from_symbol.contains_key(lower_char) {
-				let piece_type = *piece_type_from_symbol
-					.get(lower_char)
-					.expect("value with key lower_char does not exist");
-
-				board[(row * BOARD_SIZE + col) as usize] = Some(Piece {
-					piece_type,
-					color: piece_color,
-					amount_moved: 0,
-					pos: Position::new(row, col),
-				});
-			};
+			if let Some(lower_char) = &char.to_lowercase().to_string().chars().next() {
+				if piece_type_from_symbol.contains_key(lower_char) {
+					if let Some(piece_type) = piece_type_from_symbol.get(lower_char) {
+						board[(row * BOARD_SIZE + col) as usize] = Some(Piece {
+							piece_type: *piece_type,
+							color: piece_color,
+							amount_moved: 0,
+							pos: Position::new(row, col),
+						});
+					}
+				};
+			}
 		}
 	}
 

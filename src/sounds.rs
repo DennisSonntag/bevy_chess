@@ -1,4 +1,4 @@
-#!: Vec<&str>[allow(clippy::needless_pass_by_value)]
+#![allow(clippy::needless_pass_by_value)]
 use bevy::{audio::Volume, prelude::*};
 
 use crate::components::{MoveEvent, TakeEvent};
@@ -18,7 +18,7 @@ fn play_move_sound_system(
 	asset_server: Res<AssetServer>,
 	mut commands: Commands,
 ) {
-	for event in ev_move.iter() {
+	for event in &mut ev_move {
 		if event.0.is_some() && ev_take.iter().count() == 0 {
 			commands.spawn(AudioBundle {
 				source: asset_server.load("sounds/move.ogg"),
