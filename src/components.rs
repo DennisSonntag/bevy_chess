@@ -4,32 +4,41 @@ use bevy::prelude::*;
 use std::{collections::HashMap, string::ToString};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use crate::BOARD_SIZE;
+use crate::{BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE};
+
+pub struct Coord;
+
+impl Coord {
+	pub fn to_win<T: Into<f32>>(pos: T,min:f32) -> f32 {
+		let pos: f32 = pos.into();
+		(pos + min).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
+	}
+	pub fn to_win_piece<T: Into<f32>>(pos: T) -> f32 {
+		let pos: f32 = pos.into();
+		(pos).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.)
+	}
+}
 
 #[derive(Resource)]
 pub struct GameTimers {
-    pub white: Timer,
-    pub black: Timer,
+	pub white: Timer,
+	pub black: Timer,
 }
 
 impl GameTimers {
-    pub fn new() -> Self {
-        Self {
-            // white: Timer::from_seconds(5. * 60., TimerMode::Once),
-            // black: Timer::from_seconds(5. * 60., TimerMode::Once),
-            white: Timer::from_seconds(10., TimerMode::Once),
-            black: Timer::from_seconds(10., TimerMode::Once),
-        }
-    }
+	pub fn new() -> Self {
+		Self {
+			white: Timer::from_seconds(5. * 60., TimerMode::Once),
+			black: Timer::from_seconds(5. * 60., TimerMode::Once),
+		}
+	}
 }
 
 impl Default for GameTimers {
-    fn default() -> Self {
-        Self::new()
-    }
+	fn default() -> Self {
+		Self::new()
+	}
 }
-
-
 
 #[derive(Resource, Debug)]
 pub struct BoardResource(pub [Option<Piece>; 64]);

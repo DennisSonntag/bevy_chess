@@ -15,10 +15,13 @@ use bevy_prototype_lyon::prelude::*;
 
 use bevy::app::AppExit;
 use components::{
-	BlackTimer, BoardResource, GameTimers, HighlightSquare, HoverEvent, HoverSquare,
+	BlackTimer, BoardResource, Coord, GameTimers, HighlightSquare, HoverEvent, HoverSquare,
 	LegalMoveEvent, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Position, SelectedPiece,
 	TakeEvent, WhiteTimer,
 };
+
+use std::env;
+
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
 
@@ -36,6 +39,8 @@ const SQUARE_SIZE: f32 = WINDOW_SIZE / 8.;
 const BOARD_SIZE: i8 = 8;
 
 fn main() {
+	env::set_var("RUST_LOG", "");
+
 	App::new()
 		.add_plugins(DefaultPlugins.set(WindowPlugin {
 			primary_window: Some(Window {
@@ -111,8 +116,8 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 			commands.spawn((SpriteBundle {
 				transform: Transform {
 					translation: Vec3::new(
-						(f32::from(col) - 0.5).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
-						(f32::from(row) - 0.5).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+						Coord::to_win(col, -0.5),
+						Coord::to_win(row, -0.5),
 						0.0,
 					),
 					scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
@@ -139,8 +144,8 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 						..default()
 					},
 					transform: Transform::from_translation(Vec3::new(
-						SQUARE_SIZE.mul_add(f32::from(col) - 1., -(WINDOW_SIZE / 2.) + 67.),
-						SQUARE_SIZE.mul_add(f32::from(row) - 1., -(WINDOW_SIZE / 2.) + 67.),
+						Coord::to_win(col, -1.) + 67.,
+						Coord::to_win(row, -1.) + 67.,
 						1.,
 					)),
 					text_anchor: Anchor::Center,
@@ -160,8 +165,8 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 						..default()
 					},
 					transform: Transform::from_translation(Vec3::new(
-						SQUARE_SIZE.mul_add(f32::from(col) - 1., -(WINDOW_SIZE / 2.) + 10.),
-						SQUARE_SIZE.mul_add(f32::from(row) - 1., -(WINDOW_SIZE / 2.) + 10.),
+					    Coord::to_win(col, -1.) + 10.,
+					    Coord::to_win(row, -1.) + 10.,
 						1.,
 					)),
 					text_anchor: Anchor::Center,
@@ -203,10 +208,8 @@ fn spawn_piece_sprites_system(
 					texture_atlas: texture_atlas_handle,
 					transform: Transform {
 						translation: Vec3::new(
-							f32::from(col).mul_add(SQUARE_SIZE, -WINDOW_SIZE / 2.)
-								+ (SQUARE_SIZE / 2.),
-							f32::from(row).mul_add(SQUARE_SIZE, -WINDOW_SIZE / 2.)
-								+ (SQUARE_SIZE / 2.),
+						    Coord::to_win_piece(col),
+						    Coord::to_win_piece(row),
 							2.0,
 						),
 						scale: Vec3::splat(WINDOW_SIZE / 2500.),
@@ -228,8 +231,8 @@ fn spawn_piece_sprites_system(
 		.spawn((SpriteBundle {
 			transform: Transform {
 				translation: Vec3::new(
-					(0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
-					(0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+				    Coord::to_win(0.5, 0.),
+				    Coord::to_win(0.5, 0.),
 					1.0,
 				),
 				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
@@ -247,8 +250,8 @@ fn spawn_piece_sprites_system(
 		.spawn((SpriteBundle {
 			transform: Transform {
 				translation: Vec3::new(
-					(-0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
-					(-0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+				    Coord::to_win(-0.5, 0.),
+				    Coord::to_win(-0.5, 0.),
 					1.0,
 				),
 				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
@@ -274,8 +277,8 @@ fn spawn_piece_sprites_system(
 				path: GeometryBuilder::build_as(&shape),
 				transform: Transform {
 					translation: Vec3::new(
-						(-0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
-						(-0.5f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+					    Coord::to_win(-0.5, 0.),
+					    Coord::to_win(-0.5, 0.),
 						5.0,
 					),
 					scale: Vec3::new(SQUARE_SIZE * 0.66, SQUARE_SIZE * 0.66, 0.0),
@@ -392,25 +395,3 @@ fn countdown(
 	countdown.white.tick(time.delta());
 	countdown.black.tick(time.delta());
 }
-
-// fn print_board(board: [Piece; 64]) {
-// 	for row in (0..BOARD_SIZE).rev() {
-// 		print!("|");
-// 		for col in 0..BOARD_SIZE {
-// 			let index = (row * BOARD_SIZE + col) as usize;
-// 			match board[index].piece {
-// 				Pieces::None => print!(" "),
-// 				piece => print!(
-// 					"{}",
-// 					format!("{:?}", piece)
-// 						.chars()
-// 						.next()
-// 						.unwrap()
-// 						.to_lowercase()
-// 				),
-// 			}
-// 			print!("|");
-// 		}
-// 		println!();
-// 	}
-// }

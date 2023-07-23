@@ -15,7 +15,7 @@ use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 
 use crate::{
 	components::{
-		BoardResource, GameTimers, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent,
+		BoardResource, Coord, GameTimers, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent,
 		LegalMoveMarker, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Pieces, Position,
 		SelectedPiece, TakeEvent,
 	},
@@ -51,7 +51,6 @@ struct LegalMoveGen<'a> {
 
 impl LegalMoveGen<'_> {
 	fn sliding_moves(&mut self) {
-		// if let Some(piece_type) = self.piece.piece_type {
 		let start_dir_index = if self.piece.piece_type == Pieces::Bishop {
 			4
 		} else {
@@ -116,7 +115,6 @@ impl LegalMoveGen<'_> {
 			}
 		}
 		for offset in valid_offsets.1 {
-			// if let piece_color = self.piece.color {
 			let target_square = (self.start_square + offset);
 			let piece_on_target_square = self.board[target_square as usize];
 
@@ -154,7 +152,6 @@ impl LegalMoveGen<'_> {
 
 		let calculate_index = |row: i8, col: i8| (row * BOARD_SIZE + col);
 		for &(dir_x, dir_y) in &directions {
-			// if let Some(position) = self.piece.pos {
 			let new_row = self.piece.pos.row + dir_x;
 			let new_col = self.piece.pos.col + dir_y;
 
@@ -252,7 +249,6 @@ fn move_piece_system(
 					//if piece isnt selected select it
 					selected_piece.0 = clicked_piece;
 					if let Some(selected) = selected_piece.0 {
-						// if let Some(position) = selected.pos {
 						let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
 
 						let legal_moves = get_legal_moves(
@@ -270,7 +266,6 @@ fn move_piece_system(
 			}
 			if mouse_button_input.pressed(MouseButton::Left) {
 				if let Some(selected) = selected_piece.0 {
-					// if let Some(position) = selected.pos {
 					let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
 
 					let legal_moves = get_legal_moves(
@@ -305,7 +300,6 @@ fn move_piece_system(
 				ev_hover.send(HoverEvent::default());
 
 				if let Some(selected) = selected_piece.0 {
-					// if let Some(mut position) = selected.pos {
 					let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
 
 					let legal_moves = get_legal_moves(
@@ -324,12 +318,8 @@ fn move_piece_system(
 					{
 						for (mut piece, mut transform, entity) in pieces.iter_mut() {
 							if piece.as_ref() == &selected {
-								transform.translation.x = f32::from(col)
-									.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-									+ (SQUARE_SIZE / 2.);
-								transform.translation.y = f32::from(row)
-									.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-									+ (SQUARE_SIZE / 2.);
+								transform.translation.x = Coord::to_win_piece(col);
+								transform.translation.y = Coord::to_win_piece(row);
 
 								transform.translation.z = 2.;
 								piece.amount_moved += 1;
@@ -372,13 +362,8 @@ fn move_piece_system(
 					{
 						for (piece, mut transform, _) in pieces.iter_mut() {
 							if piece.as_ref() == &selected {
-								// if let Some(position) = piece.pos {
-								transform.translation.x = f32::from(piece.pos.col)
-									.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-									+ (SQUARE_SIZE / 2.);
-								transform.translation.y = f32::from(piece.pos.row)
-									.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-									+ (SQUARE_SIZE / 2.);
+								transform.translation.x = Coord::to_win_piece(piece.pos.col);
+								transform.translation.y = Coord::to_win_piece(piece.pos.row);
 								transform.translation.z = 2.;
 							}
 						}
@@ -397,19 +382,11 @@ fn highlight_selected_system(
 		.get_single_mut()
 		.expect("failed to get highlight_square");
 	if let Some(selected) = selected.0 {
-		// if let Some(position) = selected.pos {
-		highlight_square.1.translation.x = f32::from(selected.pos.col)
-			.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-			+ (SQUARE_SIZE / 2.);
-
-		highlight_square.1.translation.y = f32::from(selected.pos.row)
-			.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-			+ (SQUARE_SIZE / 2.);
+		highlight_square.1.translation.x = Coord::to_win_piece(selected.pos.col);
+		highlight_square.1.translation.y = Coord::to_win_piece(selected.pos.row);
 	} else {
-		highlight_square.1.translation.x =
-			(-1.0f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.);
-		highlight_square.1.translation.y =
-			(-1.0f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.);
+		highlight_square.1.translation.x = Coord::to_win_piece(-1.);
+		highlight_square.1.translation.y = Coord::to_win_piece(-1.);
 	}
 }
 
@@ -422,17 +399,11 @@ fn highlight_moved_system(
 		.expect("failed to get moved_square");
 	for event in ev_move.iter() {
 		if let Some(position) = event.0 {
-			moved_square.1.translation.x = f32::from(position.col)
-				.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-				+ (SQUARE_SIZE / 2.);
-			moved_square.1.translation.y = f32::from(position.row)
-				.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-				+ (SQUARE_SIZE / 2.);
+			moved_square.1.translation.x = Coord::to_win_piece(position.col);
+			moved_square.1.translation.y = Coord::to_win_piece(position.row);
 		} else {
-			moved_square.1.translation.x =
-				(-1.0f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.);
-			moved_square.1.translation.y =
-				(-1.0f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.);
+			moved_square.1.translation.x = Coord::to_win_piece(-1.);
+			moved_square.1.translation.y = Coord::to_win_piece(-1.);
 		}
 	}
 }
@@ -446,17 +417,11 @@ fn highlight_hover_system(
 		.expect("failed to get hover_square");
 	for event in ev_move.iter() {
 		if let Some(position) = event.0 {
-			hover_square.1.translation.x = f32::from(position.col)
-				.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-				+ (SQUARE_SIZE / 2.);
-			hover_square.1.translation.y = f32::from(position.row)
-				.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
-				+ (SQUARE_SIZE / 2.);
+			hover_square.1.translation.x = Coord::to_win_piece(position.col);
+			hover_square.1.translation.y = Coord::to_win_piece(position.row);
 		} else {
-			hover_square.1.translation.x =
-				(-1.0f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.);
-			hover_square.1.translation.y =
-				(-1.0f32).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.);
+			hover_square.1.translation.x = Coord::to_win_piece(-1.);
+			hover_square.1.translation.y = Coord::to_win_piece(-1.);
 		}
 	}
 }
@@ -482,10 +447,8 @@ fn highlight_legal_moves_system(
 						material: materials.add(ColorMaterial::from(Color::rgba_u8(0, 0, 0, 100))),
 						transform: Transform {
 							translation: Vec3::new(
-								(f32::from(col + 1) - 0.5)
-									.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
-								(f32::from(row + 1) - 0.5)
-									.mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)),
+								Coord::to_win(col + 1, -0.5),
+								Coord::to_win(row + 1, -0.5),
 								10.0,
 							),
 							scale: Vec3::new(0.25, 0.25, 0.0),
