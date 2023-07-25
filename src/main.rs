@@ -6,10 +6,8 @@
 	clippy::needless_pass_by_value
 )]
 
-use bevy::{prelude::*, sprite::Anchor, window::PresentMode};
+use bevy::{app::AppExit, prelude::*, sprite::Anchor, window::PresentMode};
 use bevy_prototype_lyon::prelude::*;
-
-use bevy::app::AppExit;
 use binary::{BinaryPlugin, FONT_HANDLE, PIECE_HANDLE};
 use components::{
 	BlackTimer, BoardResource, Coord, GameTimers, HighlightSquare, HoverEvent, HoverSquare,

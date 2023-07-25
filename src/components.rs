@@ -9,7 +9,7 @@ use crate::{BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE};
 pub struct Coord;
 
 impl Coord {
-	pub fn to_win<T: Into<f32>>(pos: T,min:f32) -> f32 {
+	pub fn to_win<T: Into<f32>>(pos: T, min: f32) -> f32 {
 		let pos: f32 = pos.into();
 		(pos + min).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
 	}
