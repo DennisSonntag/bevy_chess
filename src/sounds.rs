@@ -1,7 +1,9 @@
-#!: Vec<&str>[allow(clippy::needless_pass_by_value)]
 use bevy::{audio::Volume, prelude::*};
 
-use crate::components::{MoveEvent, TakeEvent};
+use crate::{
+	binary::{MOVE_SOUND_HANDLE, START_SOUND_HANDLE, TAKE_SOUND_HANDLE},
+	components::{MoveEvent, TakeEvent},
+};
 
 pub struct SoundPlugin;
 
@@ -21,7 +23,7 @@ fn play_move_sound_system(
 	for event in ev_move.iter() {
 		if event.0.is_some() && ev_take.iter().count() == 0 {
 			commands.spawn(AudioBundle {
-				source: asset_server.load("sounds/move.ogg"),
+				source: MOVE_SOUND_HANDLE.typed(),
 				settings: PlaybackSettings::ONCE.with_volume(Volume::new_absolute(0.5)),
 			});
 		}
@@ -35,7 +37,7 @@ fn play_take_sound_system(
 ) {
 	if ev_take.iter().count() > 0 {
 		commands.spawn(AudioBundle {
-			source: asset_server.load("sounds/take.ogg"),
+			source: TAKE_SOUND_HANDLE.typed(),
 			settings: PlaybackSettings::ONCE.with_volume(Volume::new_absolute(0.5)),
 		});
 	}
@@ -43,7 +45,7 @@ fn play_take_sound_system(
 
 fn play_start_sound(asset_server: Res<AssetServer>, mut commands: Commands) {
 	commands.spawn(AudioBundle {
-		source: asset_server.load("sounds/start.ogg"),
+		source: START_SOUND_HANDLE.typed(),
 		settings: PlaybackSettings::ONCE.with_volume(Volume::new_absolute(0.5)),
 	});
 }

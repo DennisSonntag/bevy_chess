@@ -300,7 +300,6 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04a90fe8e9c03fa2d30acf39a5178a48526df00c1ccea2fc43fa6d9ca4d8a168"
 dependencies = [
- "bevy_dylib",
  "bevy_internal",
 ]
 
@@ -438,15 +437,6 @@ dependencies = [
  "bevy_time",
  "bevy_utils",
  "sysinfo",
-]
-
-[[package]]
-name = "bevy_dylib"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ad484eae97d347df68c557653242371cb655281f98b2fdf8f56fe0ab73b3f9f"
-dependencies = [
- "bevy_internal",
 ]
 
 [[package]]
@@ -1362,7 +1352,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.8.0",
+ "libloading 0.7.4",
 ]
 
 [[package]]

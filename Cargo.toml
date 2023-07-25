@@ -3,10 +3,9 @@ name = "chess_bevy"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-bevy_prototype_lyon = "0.9.0"
-strum = { version = "0.25", features = ["derive"] }
-num-traits = "0.2.16"
+[[bin]]
+name = "chess"
+path = "src/main.rs"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
@@ -15,6 +14,12 @@ opt-level = 1
 # Enable high optimizations for dependencies (incl. Bevy), but not for our code:
 [profile.dev.package."*"]
 opt-level = 3
+
+[dependencies]
+bevy_prototype_lyon = "0.9.0"
+strum = { version = "0.25", features = ["derive"] }
+num-traits = "0.2.16"
+
 
 [dependencies.chrono]
 version = "0.4.26"
@@ -47,6 +52,19 @@ features = [
   # Bevy functionality:
   "wayland",              # Linux: Support Wayland windowing system
   # Development/Debug features:
-  "dynamic_linking", # Dynamic linking for faster compile-times
+  # "dynamic_linking", # Dynamic linking for faster compile-times
 ]
+
+# [build-dependencies]
+# bevy_prototype_lyon = "0.9.0"
+# strum = { version = "0.25", features = ["derive"] }
+# num-traits = "0.2.16"
+#
+#
+# [build-dependencies.chrono]
+# version = "0.4.26"
+# default-features = false
+# features = [
+# 	"std"
+# ]
 

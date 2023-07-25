@@ -6,14 +6,11 @@
 	clippy::needless_pass_by_value
 )]
 
-use bevy::{
-	prelude::*,
-	sprite::Anchor,
-	window::{ExitCondition, PresentMode},
-};
+use bevy::{prelude::*, sprite::Anchor, window::PresentMode};
 use bevy_prototype_lyon::prelude::*;
 
 use bevy::app::AppExit;
+use binary::{BinaryPlugin, FONT_HANDLE, PIECE_HANDLE};
 use components::{
 	BlackTimer, BoardResource, Coord, GameTimers, HighlightSquare, HoverEvent, HoverSquare,
 	LegalMoveEvent, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Position, SelectedPiece,
@@ -28,6 +25,7 @@ use sounds::SoundPlugin;
 use chrono::Duration;
 use num_traits::cast::ToPrimitive;
 
+mod binary;
 mod components;
 mod piece;
 mod sounds;
@@ -39,6 +37,7 @@ const SQUARE_SIZE: f32 = WINDOW_SIZE / 8.;
 const BOARD_SIZE: i8 = 8;
 
 fn main() {
+	#[cfg(not(debug_assertions))]
 	env::set_var("RUST_LOG", "");
 
 	App::new()
@@ -51,10 +50,10 @@ fn main() {
 				prevent_default_event_handling: false,
 				..default()
 			}),
-			exit_condition: ExitCondition::OnPrimaryClosed,
 			..default()
 		}))
 		.add_plugins(ShapePlugin)
+		.add_plugins(BinaryPlugin)
 		.insert_resource(Msaa::Sample8)
 		.init_resource::<BoardResource>()
 		.init_resource::<SelectedPiece>()
@@ -92,13 +91,13 @@ fn setup_camera(mut commands: Commands, mut countdown: ResMut<GameTimers>) {
 	countdown.black.pause();
 }
 
-fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
-	let font = asset_server.load("fonts/Roboto-Bold.ttf");
+fn spawn_board_system(mut commands: Commands) {
 	let text_style = TextStyle {
-		font,
+		font: FONT_HANDLE.typed(),
 		font_size: 20.0,
 		color: Color::BLACK,
 	};
+
 	for row in 1..=BOARD_SIZE {
 		for col in 1..=BOARD_SIZE {
 			let color = if (row + col) % 2 == 0 {
@@ -115,11 +114,7 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 			commands.spawn((SpriteBundle {
 				transform: Transform {
-					translation: Vec3::new(
-						Coord::to_win(col, -0.5),
-						Coord::to_win(row, -0.5),
-						0.0,
-					),
+					translation: Vec3::new(Coord::to_win(col, -0.5), Coord::to_win(row, -0.5), 0.0),
 					scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
 					..default()
 				},
@@ -165,8 +160,8 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 						..default()
 					},
 					transform: Transform::from_translation(Vec3::new(
-					    Coord::to_win(col, -1.) + 10.,
-					    Coord::to_win(row, -1.) + 10.,
+						Coord::to_win(col, -1.) + 10.,
+						Coord::to_win(row, -1.) + 10.,
 						1.,
 					)),
 					text_anchor: Anchor::Center,
@@ -179,11 +174,10 @@ fn spawn_board_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn spawn_piece_sprites_system(
 	mut commands: Commands,
-	asset_server: Res<AssetServer>,
 	mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 	board: ResMut<BoardResource>,
 ) {
-	let texture_handle = asset_server.load("pieces.png");
+	let texture_handle = PIECE_HANDLE.typed();
 
 	for (index, piece) in board.0.iter().enumerate() {
 		if let Some(piece) = piece {
@@ -208,8 +202,8 @@ fn spawn_piece_sprites_system(
 					texture_atlas: texture_atlas_handle,
 					transform: Transform {
 						translation: Vec3::new(
-						    Coord::to_win_piece(col),
-						    Coord::to_win_piece(row),
+							Coord::to_win_piece(col),
+							Coord::to_win_piece(row),
 							2.0,
 						),
 						scale: Vec3::splat(WINDOW_SIZE / 2500.),
@@ -230,11 +224,7 @@ fn spawn_piece_sprites_system(
 	commands
 		.spawn((SpriteBundle {
 			transform: Transform {
-				translation: Vec3::new(
-				    Coord::to_win(0.5, 0.),
-				    Coord::to_win(0.5, 0.),
-					1.0,
-				),
+				translation: Vec3::new(Coord::to_win(0.5, 0.), Coord::to_win(0.5, 0.), 1.0),
 				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
 				..default()
 			},
@@ -249,11 +239,7 @@ fn spawn_piece_sprites_system(
 	commands
 		.spawn((SpriteBundle {
 			transform: Transform {
-				translation: Vec3::new(
-				    Coord::to_win(-0.5, 0.),
-				    Coord::to_win(-0.5, 0.),
-					1.0,
-				),
+				translation: Vec3::new(Coord::to_win(-0.5, 0.), Coord::to_win(-0.5, 0.), 1.0),
 				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
 				..default()
 			},
@@ -276,11 +262,7 @@ fn spawn_piece_sprites_system(
 			ShapeBundle {
 				path: GeometryBuilder::build_as(&shape),
 				transform: Transform {
-					translation: Vec3::new(
-					    Coord::to_win(-0.5, 0.),
-					    Coord::to_win(-0.5, 0.),
-						5.0,
-					),
+					translation: Vec3::new(Coord::to_win(-0.5, 0.), Coord::to_win(-0.5, 0.), 5.0),
 					scale: Vec3::new(SQUARE_SIZE * 0.66, SQUARE_SIZE * 0.66, 0.0),
 					..default()
 				},
@@ -292,15 +274,9 @@ fn spawn_piece_sprites_system(
 		.insert(HoverSquare);
 }
 
-fn spawn_timers_system(
-	mut commands: Commands,
-	asset_server: Res<AssetServer>,
-	mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-	board: ResMut<BoardResource>,
-) {
-	let font = asset_server.load("fonts/Roboto-Bold.ttf");
+fn spawn_timers_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 	let text_style = TextStyle {
-		font,
+		font: FONT_HANDLE.typed(),
 		font_size: 20.0,
 		color: Color::BLACK,
 	};
