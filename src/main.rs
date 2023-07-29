@@ -15,9 +15,7 @@ use components::{
 	LegalMoveEvent, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Position, SelectedPiece,
 	TakeEvent, WhiteTimer,
 };
-use util::{error_handler, BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE, option_handler};
-
-use std::env;
+use util::{error_handler, option_handler, BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE};
 
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
@@ -35,7 +33,7 @@ mod util;
 
 fn main() {
 	#[cfg(not(debug_assertions))]
-	env::set_var("RUST_LOG", "");
+	std::env::set_var("RUST_LOG", "");
 
 	App::new()
 		.add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -73,8 +71,8 @@ fn main() {
 		.add_systems(
 			Update,
 			(
-				update_white_timer_system,
-				update_black_timer_system,
+				update_white_timer_system.pipe(error_handler),
+				update_black_timer_system.pipe(error_handler),
 				countdown,
 			),
 		)
@@ -232,7 +230,7 @@ fn spawn_piece_sprites_system(
 	Ok(())
 }
 
-fn spawn_timers_system(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn spawn_timers_system(mut commands: Commands) {
 	let text_style = TextStyle {
 		font: FONT_HANDLE.typed(),
 		font_size: 20.0,
@@ -258,33 +256,35 @@ fn spawn_timers_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn format_elapsed_time(seconds: u64) -> String {
-	let duration = Duration::seconds(seconds.to_i64().unwrap());
-	let minutes = duration.num_minutes();
-	let remaining_seconds = duration.num_seconds() % 60;
-
-	format!("{minutes:02}:{remaining_seconds:02}")
+	seconds.to_i64().map_or_else(String::new, |seconds| {
+		let duration = Duration::seconds(seconds);
+		let minutes = duration.num_minutes();
+		let remaining_seconds = duration.num_seconds() % 60;
+		format!("{minutes:02}:{remaining_seconds:02}")
+	})
 }
 
 fn update_white_timer_system(
 	timers: Res<GameTimers>,
 	mut white_timer: Query<&mut Text, With<WhiteTimer>>,
-) {
-	if let Ok(mut text) = white_timer.get_single_mut() {
-		let seconds = timers.white.duration().as_secs() - timers.white.elapsed().as_secs();
+) -> Result<()> {
+	let mut text = white_timer.get_single_mut()?;
+	let seconds = timers.white.duration().as_secs() - timers.white.elapsed().as_secs();
 
-		text.sections[0].value = format_elapsed_time(seconds);
-	}
+	text.sections[0].value = format_elapsed_time(seconds);
+
+	Ok(())
 }
 
 fn update_black_timer_system(
 	timers: Res<GameTimers>,
 	mut black_timer: Query<&mut Text, With<BlackTimer>>,
-) {
-	if let Ok(mut text) = black_timer.get_single_mut() {
-		let seconds = timers.black.duration().as_secs() - timers.black.elapsed().as_secs();
+) -> Result<()> {
+	let mut text = black_timer.get_single_mut()?;
+	let seconds = timers.black.duration().as_secs() - timers.black.elapsed().as_secs();
 
-		text.sections[0].value = format_elapsed_time(seconds);
-	}
+	text.sections[0].value = format_elapsed_time(seconds);
+	Ok(())
 }
 
 fn countdown(

@@ -9,6 +9,8 @@
 	clippy::needless_pass_by_value
 )]
 
+
+use anyhow::Result;
 use std::collections::HashMap;
 
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
@@ -19,6 +21,7 @@ use crate::{
 		LegalMoveMarker, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Pieces, Position,
 		SelectedPiece, TakeEvent,
 	},
+	util::error_handler,
 	BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE,
 };
 
@@ -30,9 +33,9 @@ impl Plugin for PiecePlugin {
 			Update,
 			(
 				move_piece_system,
-				highlight_moved_system,
-				highlight_selected_system,
-				highlight_hover_system,
+				highlight_moved_system.pipe(error_handler),
+				highlight_selected_system.pipe(error_handler),
+				highlight_hover_system.pipe(error_handler),
 				highlight_legal_moves_system,
 			),
 		);
@@ -50,7 +53,7 @@ struct LegalMoveGen<'a> {
 }
 
 impl LegalMoveGen<'_> {
-	fn sliding_moves(&mut self) {
+	fn sliding_moves(&mut self) -> Option<()> {
 		let start_dir_index = if self.piece.piece_type == Pieces::Bishop {
 			4
 		} else {
@@ -65,11 +68,7 @@ impl LegalMoveGen<'_> {
 
 		for direction_index in start_dir_index..end_dir_index {
 			let direction_index = direction_index as usize;
-			for n in 0..self
-				.squares_to_edge
-				.get(&(self.start_square as usize))
-				.expect("squares to edge for start square not found")[direction_index]
-			{
+			for n in 0..self.squares_to_edge.get(&(self.start_square as usize))?[direction_index] {
 				let target_square =
 					(self.start_square + self.direction_offsets[direction_index] * (n + 1));
 				let piece_on_target_square = self.board[target_square as usize];
@@ -87,9 +86,10 @@ impl LegalMoveGen<'_> {
 				}
 			}
 		}
+		Some(())
 	}
 
-	fn pawn_moves(&mut self) {
+	fn pawn_moves(&mut self) -> Option<()> {
 		let valid_offsets = if self.piece.color == PieceColor::White {
 			([8, 16], [9, 7])
 		} else {
@@ -142,9 +142,10 @@ impl LegalMoveGen<'_> {
 				break;
 			}
 		}
+		Some(())
 	}
 
-	fn knight_moves(&mut self) {
+	fn knight_moves(&mut self) -> Option<()> {
 		let directions = [
 			(1, 2),
 			(2, 1),
@@ -170,15 +171,11 @@ impl LegalMoveGen<'_> {
 				self.moves.push(index);
 			}
 		}
+		Some(())
 	}
-	fn king_moves(&mut self) {
+	fn king_moves(&mut self) -> Option<()> {
 		for (index, offset) in self.direction_offsets.iter().enumerate() {
-			if self
-				.squares_to_edge
-				.get(&(self.start_square as usize))
-				.expect("could not find squares_to_edge from start_square")[index]
-				> 0
-			{
+			if self.squares_to_edge.get(&(self.start_square as usize))?[index] > 0 {
 				let target_square = (self.start_square + offset);
 				let piece_on_target_square = self.board[target_square as usize];
 
@@ -189,6 +186,7 @@ impl LegalMoveGen<'_> {
 				self.moves.push(target_square);
 			}
 		}
+		Some(())
 	}
 }
 
@@ -215,7 +213,7 @@ fn get_legal_moves(
 		Pieces::Knight => legal_move_gen.knight_moves(),
 		Pieces::Pawn => legal_move_gen.pawn_moves(),
 		Pieces::King => legal_move_gen.king_moves(),
-	}
+	};
 
 	legal_move_gen.moves
 }
@@ -236,146 +234,144 @@ fn move_piece_system(
 	move_info: Res<MoveData>,
 	mut timers: ResMut<GameTimers>,
 ) {
-	if let Ok(window) = windows.get_single() {
-		#[allow(clippy::cast_possible_truncation)]
-		if let Some(position) = window.cursor_position() {
-			let x = position[0];
-			let y = position[1] - 50.;
+	let window = windows.get_single().unwrap();
+	#[allow(clippy::cast_possible_truncation)]
+	if let Some(position) = window.cursor_position() {
+		let x = position[0];
+		let y = position[1] - 50.;
 
-			let col = ((x / 75.).floor()) as i8;
-			let row = 7 - ((y / 75.).floor()) as i8;
-			if (0. ..600.).contains(&y) && (0. ..600.).contains(&x) {
-				let turn_color = *current_state.get();
-				let index = (row * BOARD_SIZE + col) as usize;
+		let col = ((x / 75.).floor()) as i8;
+		let row = 7 - ((y / 75.).floor()) as i8;
+		if (0. ..600.).contains(&y) && (0. ..600.).contains(&x) {
+			let turn_color = *current_state.get();
+			let index = (row * BOARD_SIZE + col) as usize;
 
-				let clicked_piece = board.0[index];
-				if mouse_button_input.just_pressed(MouseButton::Left) {
-					if clicked_piece == selected_piece.0 && selected_piece.0.is_some() {
-						// if piece is already selected deselect it
-						selected_piece.0 = None;
-						ev_legal.send(LegalMoveEvent::default());
-						ev_move.send(MoveEvent::default());
+			let clicked_piece = board.0[index];
+			if mouse_button_input.just_pressed(MouseButton::Left) {
+				if clicked_piece == selected_piece.0 && selected_piece.0.is_some() {
+					// if piece is already selected deselect it
+					selected_piece.0 = None;
+					ev_legal.send(LegalMoveEvent::default());
+					ev_move.send(MoveEvent::default());
+				} else if clicked_piece.is_some_and(|x| x.color == turn_color) {
+					//if piece isnt selected select it
+					selected_piece.0 = clicked_piece;
+					let selected = selected_piece.0.unwrap();
+					let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
+
+					let legal_moves = get_legal_moves(
+						&move_info.clone().num_squares_to_edge,
+						move_info.direction_offsets,
+						&board.0,
+						selected_index,
+						turn_color,
+					);
+					ev_legal.send(LegalMoveEvent(Some(legal_moves)));
+					ev_move.send(MoveEvent::default());
+					ev_hover.send(HoverEvent::default());
+				};
+			}
+			if mouse_button_input.pressed(MouseButton::Left) {
+				if let Some(selected) = selected_piece.0 {
+					let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
+
+					let legal_moves = get_legal_moves(
+						&move_info.clone().num_squares_to_edge,
+						move_info.direction_offsets,
+						&board.0,
+						selected_index,
+						turn_color,
+					);
+
+					ev_legal.send(LegalMoveEvent(Some(legal_moves.clone())));
+					let clicked_index = row * BOARD_SIZE + col;
+
+					if (clicked_piece.is_none()
+						|| clicked_piece.is_some_and(|x| x.color != turn_color))
+						&& legal_moves.contains(&(clicked_index))
+					{
+						ev_hover.send(HoverEvent(Some(Position::new(row, col))));
 					} else if clicked_piece.is_some_and(|x| x.color == turn_color) {
-						//if piece isnt selected select it
-						selected_piece.0 = clicked_piece;
-						if let Some(selected) = selected_piece.0 {
-							let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
-
-							let legal_moves = get_legal_moves(
-								&move_info.clone().num_squares_to_edge,
-								move_info.direction_offsets,
-								&board.0,
-								selected_index,
-								turn_color,
-							);
-							ev_legal.send(LegalMoveEvent(Some(legal_moves)));
-						}
-						ev_move.send(MoveEvent::default());
 						ev_hover.send(HoverEvent::default());
-					};
-				}
-				if mouse_button_input.pressed(MouseButton::Left) {
-					if let Some(selected) = selected_piece.0 {
-						let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
-
-						let legal_moves = get_legal_moves(
-							&move_info.clone().num_squares_to_edge,
-							move_info.direction_offsets,
-							&board.0,
-							selected_index,
-							turn_color,
-						);
-
-						ev_legal.send(LegalMoveEvent(Some(legal_moves.clone())));
-						let clicked_index = row * BOARD_SIZE + col;
-
-						if (clicked_piece.is_none()
-							|| clicked_piece.is_some_and(|x| x.color != turn_color))
-							&& legal_moves.contains(&(clicked_index))
-						{
-							ev_hover.send(HoverEvent(Some(Position::new(row, col))));
-						} else if clicked_piece.is_some_and(|x| x.color == turn_color) {
-							ev_hover.send(HoverEvent::default());
-						}
-						for (piece, mut transform, _) in pieces.iter_mut() {
-							if Some(*piece) == selected_piece.0 {
-								transform.translation.x = position.x - (WINDOW_SIZE / 2.);
-								transform.translation.y = -position.y + (WINDOW_SIZE / 2.) + 50.;
-								transform.translation.z = 30.;
-							}
+					}
+					for (piece, mut transform, _) in pieces.iter_mut() {
+						if Some(*piece) == selected_piece.0 {
+							transform.translation.x = position.x - (WINDOW_SIZE / 2.);
+							transform.translation.y = -position.y + (WINDOW_SIZE / 2.) + 50.;
+							transform.translation.z = 30.;
 						}
 					}
 				}
-				if mouse_button_input.just_released(MouseButton::Left) {
-					ev_hover.send(HoverEvent::default());
+			}
+			if mouse_button_input.just_released(MouseButton::Left) {
+				ev_hover.send(HoverEvent::default());
 
-					if let Some(selected) = selected_piece.0 {
-						let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
+				if let Some(selected) = selected_piece.0 {
+					let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
 
-						let legal_moves = get_legal_moves(
-							&move_info.clone().num_squares_to_edge,
-							move_info.direction_offsets,
-							&board.0,
-							selected_index,
-							turn_color,
-						);
+					let legal_moves = get_legal_moves(
+						&move_info.clone().num_squares_to_edge,
+						move_info.direction_offsets,
+						&board.0,
+						selected_index,
+						turn_color,
+					);
 
-						let clicked_index = row * BOARD_SIZE + col;
-						if Some(selected) != clicked_piece
-							&& (clicked_piece.is_none()
-								|| clicked_piece.is_some_and(|x| x.color != turn_color))
-							&& legal_moves.contains(&{ clicked_index })
-						{
-							for (mut piece, mut transform, entity) in pieces.iter_mut() {
-								if piece.as_ref() == &selected {
-									transform.translation.x = Coord::to_win_piece(col);
-									transform.translation.y = Coord::to_win_piece(row);
+					let clicked_index = row * BOARD_SIZE + col;
+					if Some(selected) != clicked_piece
+						&& (clicked_piece.is_none()
+							|| clicked_piece.is_some_and(|x| x.color != turn_color))
+						&& legal_moves.contains(&{ clicked_index })
+					{
+						for (mut piece, mut transform, entity) in pieces.iter_mut() {
+							if piece.as_ref() == &selected {
+								transform.translation.x = Coord::to_win_piece(col);
+								transform.translation.y = Coord::to_win_piece(row);
 
-									transform.translation.z = 2.;
-									piece.amount_moved += 1;
-									let new_position = Position::new(row, col);
-									piece.pos = new_position;
+								transform.translation.z = 2.;
+								piece.amount_moved += 1;
+								let new_position = Position::new(row, col);
+								piece.pos = new_position;
 
-									let old_index =
-										(selected.pos.row * BOARD_SIZE + selected.pos.col) as usize;
+								let old_index =
+									(selected.pos.row * BOARD_SIZE + selected.pos.col) as usize;
 
-									board.0[old_index] = None;
+								board.0[old_index] = None;
 
-									board.0[index] = Some(*piece);
-									board.0[index].map(|mut x| new_position);
+								board.0[index] = Some(*piece);
+								board.0[index].map(|mut x| new_position);
 
-									ev_move.send(MoveEvent(Some(new_position)));
-								}
-								if clicked_piece.is_some_and(|x| x == *piece.as_ref())
-									&& clicked_piece.is_some_and(|x| x.color != turn_color)
-								{
-									commands.entity(entity).despawn_recursive();
-									ev_take.send(TakeEvent);
-								}
+								ev_move.send(MoveEvent(Some(new_position)));
 							}
-							selected_piece.0 = None;
-							ev_legal.send(LegalMoveEvent::default());
-							next_state.set(turn_color.not());
-							match turn_color {
-								PieceColor::White => {
-									timers.black.unpause();
-									timers.white.pause();
-								}
-								PieceColor::Black => {
-									timers.white.unpause();
-									timers.black.pause();
-								}
+							if clicked_piece.is_some_and(|x| x == *piece.as_ref())
+								&& clicked_piece.is_some_and(|x| x.color != turn_color)
+							{
+								commands.entity(entity).despawn_recursive();
+								ev_take.send(TakeEvent);
 							}
-						} else if Some(selected) == clicked_piece
-							|| clicked_piece.is_some_and(|x| x.color == turn_color)
-							|| !legal_moves.contains(&{ clicked_index })
-						{
-							for (piece, mut transform, _) in pieces.iter_mut() {
-								if piece.as_ref() == &selected {
-									transform.translation.x = Coord::to_win_piece(piece.pos.col);
-									transform.translation.y = Coord::to_win_piece(piece.pos.row);
-									transform.translation.z = 2.;
-								}
+						}
+						selected_piece.0 = None;
+						ev_legal.send(LegalMoveEvent::default());
+						next_state.set(turn_color.not());
+						match turn_color {
+							PieceColor::White => {
+								timers.black.unpause();
+								timers.white.pause();
+							}
+							PieceColor::Black => {
+								timers.white.unpause();
+								timers.black.pause();
+							}
+						}
+					} else if Some(selected) == clicked_piece
+						|| clicked_piece.is_some_and(|x| x.color == turn_color)
+						|| !legal_moves.contains(&{ clicked_index })
+					{
+						for (piece, mut transform, _) in pieces.iter_mut() {
+							if piece.as_ref() == &selected {
+								transform.translation.x = Coord::to_win_piece(piece.pos.col);
+								transform.translation.y = Coord::to_win_piece(piece.pos.row);
+								transform.translation.z = 2.;
 							}
 						}
 					}
@@ -388,25 +384,24 @@ fn move_piece_system(
 fn highlight_selected_system(
 	selected: Res<SelectedPiece>,
 	mut highlight_square: Query<(&HighlightSquare, &mut Transform)>,
-) {
-	if let Ok(mut highlight_square) = highlight_square.get_single_mut() {
-		if let Some(selected) = selected.0 {
-			highlight_square.1.translation.x = Coord::to_win_piece(selected.pos.col);
-			highlight_square.1.translation.y = Coord::to_win_piece(selected.pos.row);
-		} else {
-			highlight_square.1.translation.x = Coord::to_win_piece(-1.);
-			highlight_square.1.translation.y = Coord::to_win_piece(-1.);
-		}
-	}
+) -> Result<()> {
+	let mut highlight_square = highlight_square.get_single_mut()?;
+	if let Some(selected) = selected.0 {
+		highlight_square.1.translation.x = Coord::to_win_piece(selected.pos.col);
+		highlight_square.1.translation.y = Coord::to_win_piece(selected.pos.row);
+	} else {
+		highlight_square.1.translation.x = Coord::to_win_piece(-1.);
+		highlight_square.1.translation.y = Coord::to_win_piece(-1.);
+	};
+
+	Ok(())
 }
 
 fn highlight_moved_system(
 	mut moved_square: Query<(&MovedSquare, &mut Transform)>,
 	mut ev_move: EventReader<MoveEvent>,
-) {
-	let mut moved_square = moved_square
-		.get_single_mut()
-		.expect("failed to get moved_square");
+) -> Result<()> {
+	let mut moved_square = moved_square.get_single_mut()?;
 	for event in ev_move.iter() {
 		if let Some(position) = event.0 {
 			moved_square.1.translation.x = Coord::to_win_piece(position.col);
@@ -416,15 +411,14 @@ fn highlight_moved_system(
 			moved_square.1.translation.y = Coord::to_win_piece(-1.);
 		}
 	}
+	Ok(())
 }
 
 fn highlight_hover_system(
 	mut hover_square: Query<(&HoverSquare, &mut Transform)>,
 	mut ev_move: EventReader<HoverEvent>,
-) {
-	let mut hover_square = hover_square
-		.get_single_mut()
-		.expect("failed to get hover_square");
+) -> Result<()> {
+	let mut hover_square = hover_square.get_single_mut()?;
 	for event in ev_move.iter() {
 		if let Some(position) = event.0 {
 			hover_square.1.translation.x = Coord::to_win_piece(position.col);
@@ -434,6 +428,8 @@ fn highlight_hover_system(
 			hover_square.1.translation.y = Coord::to_win_piece(-1.);
 		}
 	}
+
+	Ok(())
 }
 
 fn highlight_legal_moves_system(

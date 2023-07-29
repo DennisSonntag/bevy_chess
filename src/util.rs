@@ -83,12 +83,12 @@ pub mod macros {
 
 pub fn error_handler(In(result): In<Result<()>>) {
 	if let Err(err) = result {
-		println!("encountered an error {:?}", err);
+		println!("encountered an error {err:?}");
 	}
 }
 
 pub fn option_handler(In(result): In<Option<()>>) {
 	if let Some(err) = result {
-		println!("encountered an None {:?}", err);
+		println!("encountered an None {err:?}");
 	}
 }

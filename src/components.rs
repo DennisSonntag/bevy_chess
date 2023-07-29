@@ -1,5 +1,6 @@
 #![allow(dead_code, unused, clippy::cast_sign_loss)]
 
+use anyhow::Result;
 use bevy::prelude::*;
 use std::{collections::HashMap, string::ToString};
 use strum::{Display, EnumIter, IntoEnumIterator};
@@ -121,13 +122,12 @@ pub struct Piece {
 
 impl FromWorld for BoardResource {
 	fn from_world(_: &mut World) -> Self {
-		Self(load_position_from_fen(
-			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-		))
+		load_position_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+			.map_or(Self([None; 64]), Self)
 	}
 }
 
-fn load_position_from_fen(fen: &str) -> [Option<Piece>; 64] {
+fn load_position_from_fen(fen: &str) -> Option<[Option<Piece>; 64]> {
 	let mut board = [None; 64];
 
 	let piece_type_from_symbol: HashMap<char, Pieces> = Pieces::iter()
@@ -173,16 +173,9 @@ fn load_position_from_fen(fen: &str) -> [Option<Piece>; 64] {
 				PieceColor::Black
 			};
 
-			let lower_char = &char
-				.to_lowercase()
-				.to_string()
-				.chars()
-				.next()
-				.expect("could not get first lowercase character");
+			let lower_char = &char.to_lowercase().to_string().chars().next()?;
 			if piece_type_from_symbol.contains_key(lower_char) {
-				let piece_type = *piece_type_from_symbol
-					.get(lower_char)
-					.expect("value with key lower_char does not exist");
+				let piece_type = *piece_type_from_symbol.get(lower_char)?;
 
 				board[(row * BOARD_SIZE + col) as usize] = Some(Piece {
 					piece_type,
@@ -194,7 +187,7 @@ fn load_position_from_fen(fen: &str) -> [Option<Piece>; 64] {
 		}
 	}
 
-	board
+	Some(board)
 }
 
 #[derive(Resource, Debug)]
