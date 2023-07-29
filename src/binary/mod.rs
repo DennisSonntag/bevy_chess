@@ -1,10 +1,3 @@
-#![allow(
-	dead_code,
-	unused,
-	clippy::unreadable_literal,
-	clippy::module_name_repetitions
-)]
-
 use std::{borrow::Cow, path::Path};
 
 use bevy::{
@@ -14,7 +7,7 @@ use bevy::{
 	reflect::TypeUuid,
 	render::texture::{CompressedImageFormats, ImageSampler, ImageType},
 	sprite::MaterialMesh2dBundle,
-	utils::Uuid,
+	utils::Uuid
 };
 
 pub const PIECE_HANDLE: HandleUntyped =
@@ -39,7 +32,7 @@ fn font_loader(bytes: &[u8], _: Cow<str>) -> Font {
 
 fn ogg_loader(bytes: &[u8], _: Cow<str>) -> AudioSource {
 	AudioSource {
-		bytes: bytes.into(),
+		bytes: bytes.into()
 	}
 }
 
@@ -48,7 +41,7 @@ fn image_loader(bytes: &[u8], _: Cow<str>) -> Image {
 		bytes,
 		ImageType::Extension("png"),
 		CompressedImageFormats::NONE,
-		true,
+		true
 	)
 	.expect("could not load image");
 

@@ -9,20 +9,19 @@
 	clippy::needless_pass_by_value
 )]
 
-
-use anyhow::Result;
 use std::collections::HashMap;
 
+use anyhow::Result;
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 
 use crate::{
 	components::{
 		BoardResource, Coord, GameTimers, HighlightSquare, HoverEvent, HoverSquare, LegalMoveEvent,
 		LegalMoveMarker, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Pieces, Position,
-		SelectedPiece, TakeEvent,
+		SelectedPiece, TakeEvent
 	},
 	util::error_handler,
-	BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE,
+	BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE
 };
 
 pub struct PiecePlugin;
@@ -36,8 +35,8 @@ impl Plugin for PiecePlugin {
 				highlight_moved_system.pipe(error_handler),
 				highlight_selected_system.pipe(error_handler),
 				highlight_hover_system.pipe(error_handler),
-				highlight_legal_moves_system,
-			),
+				highlight_legal_moves_system
+			)
 		);
 	}
 }
@@ -49,7 +48,7 @@ struct LegalMoveGen<'a> {
 	direction_offsets: [i8; 8],
 	board: &'a [Option<Piece>; 64],
 	turn_color: PieceColor,
-	moves: Vec<i8>,
+	moves: Vec<i8>
 }
 
 impl LegalMoveGen<'_> {
@@ -75,14 +74,14 @@ impl LegalMoveGen<'_> {
 
 				// Blocked by friendly piece, so can't move any further in this direction
 				if piece_on_target_square.is_some_and(|x| x.color == self.turn_color) {
-					break;
+					break
 				}
 
 				self.moves.push(target_square);
 
 				// Can't move any further in this directoin after capturing opponent's piece
 				if piece_on_target_square.is_some_and(|x| x.color != self.turn_color) {
-					break;
+					break
 				}
 			}
 		}
@@ -102,22 +101,22 @@ impl LegalMoveGen<'_> {
 			if offset.abs() == 8
 				&& piece_on_target_square.is_some_and(|x| x.color != self.turn_color)
 			{
-				break;
+				break
 			}
 
 			// Blocked by friendly piece, so can't move any further in this direction
 			if piece_on_target_square.is_some_and(|x| x.color == self.turn_color) {
-				break;
+				break
 			}
 			if offset.abs() == 16 && self.piece.amount_moved != 0 {
-				break;
+				break
 			}
 
 			self.moves.push(target_square);
 
 			// Can't move any further in this directoin after capturing opponent's piece
 			if piece_on_target_square.is_some_and(|x| x.color != self.turn_color) {
-				break;
+				break
 			}
 		}
 		for offset in valid_offsets.1 {
@@ -126,20 +125,20 @@ impl LegalMoveGen<'_> {
 
 			// Blocked by friendly piece, so can't move any further in this direction
 			if piece_on_target_square.is_some_and(|x| x.color == self.turn_color) {
-				break;
+				break
 			}
 
 			if piece_on_target_square.is_none()
 				|| piece_on_target_square.is_some_and(|x| x.color != self.piece.color.not())
 			{
-				continue;
+				continue
 			}
 
 			self.moves.push(target_square);
 
 			// Can't move any further in this directoin after capturing opponent's piece
 			if piece_on_target_square.is_some_and(|x| x.color != self.turn_color) {
-				break;
+				break
 			}
 		}
 		Some(())
@@ -154,7 +153,7 @@ impl LegalMoveGen<'_> {
 			(1, -2),
 			(2, -1),
 			(-1, -2),
-			(-2, -1),
+			(-2, -1)
 		];
 
 		let calculate_index = |row: i8, col: i8| (row * BOARD_SIZE + col);
@@ -166,13 +165,14 @@ impl LegalMoveGen<'_> {
 				let index = calculate_index(new_row, new_col);
 				let piece_on_target_square = self.board[index as usize];
 				if piece_on_target_square.is_some_and(|x| x.color == self.piece.color) {
-					continue;
+					continue
 				}
 				self.moves.push(index);
 			}
 		}
 		Some(())
 	}
+
 	fn king_moves(&mut self) -> Option<()> {
 		for (index, offset) in self.direction_offsets.iter().enumerate() {
 			if self.squares_to_edge.get(&(self.start_square as usize))?[index] > 0 {
@@ -181,7 +181,7 @@ impl LegalMoveGen<'_> {
 
 				// Blocked by friendly piece, so can't move any further in this direction
 				if piece_on_target_square.is_some_and(|x| x.color == self.turn_color) {
-					continue;
+					continue
 				}
 				self.moves.push(target_square);
 			}
@@ -195,7 +195,7 @@ fn get_legal_moves(
 	direction_offsets: [i8; 8],
 	board: &[Option<Piece>; 64],
 	start_square: i8,
-	turn_color: PieceColor,
+	turn_color: PieceColor
 ) -> Vec<i8> {
 	let mut moves = Vec::new();
 	let piece = board[start_square as usize].unwrap();
@@ -206,13 +206,13 @@ fn get_legal_moves(
 		direction_offsets,
 		board,
 		turn_color,
-		moves,
+		moves
 	};
 	match piece.piece_type {
 		Pieces::Queen | Pieces::Rook | Pieces::Bishop => legal_move_gen.sliding_moves(),
 		Pieces::Knight => legal_move_gen.knight_moves(),
 		Pieces::Pawn => legal_move_gen.pawn_moves(),
-		Pieces::King => legal_move_gen.king_moves(),
+		Pieces::King => legal_move_gen.king_moves()
 	};
 
 	legal_move_gen.moves
@@ -232,7 +232,7 @@ fn move_piece_system(
 	mut ev_take: EventWriter<TakeEvent>,
 	mut ev_legal: EventWriter<LegalMoveEvent>,
 	move_info: Res<MoveData>,
-	mut timers: ResMut<GameTimers>,
+	mut timers: ResMut<GameTimers>
 ) {
 	let window = windows.get_single().unwrap();
 	#[allow(clippy::cast_possible_truncation)]
@@ -254,7 +254,7 @@ fn move_piece_system(
 					ev_legal.send(LegalMoveEvent::default());
 					ev_move.send(MoveEvent::default());
 				} else if clicked_piece.is_some_and(|x| x.color == turn_color) {
-					//if piece isnt selected select it
+					// if piece isnt selected select it
 					selected_piece.0 = clicked_piece;
 					let selected = selected_piece.0.unwrap();
 					let selected_index = selected.pos.row * BOARD_SIZE + selected.pos.col;
@@ -264,7 +264,7 @@ fn move_piece_system(
 						move_info.direction_offsets,
 						&board.0,
 						selected_index,
-						turn_color,
+						turn_color
 					);
 					ev_legal.send(LegalMoveEvent(Some(legal_moves)));
 					ev_move.send(MoveEvent::default());
@@ -280,7 +280,7 @@ fn move_piece_system(
 						move_info.direction_offsets,
 						&board.0,
 						selected_index,
-						turn_color,
+						turn_color
 					);
 
 					ev_legal.send(LegalMoveEvent(Some(legal_moves.clone())));
@@ -314,7 +314,7 @@ fn move_piece_system(
 						move_info.direction_offsets,
 						&board.0,
 						selected_index,
-						turn_color,
+						turn_color
 					);
 
 					let clicked_index = row * BOARD_SIZE + col;
@@ -383,7 +383,7 @@ fn move_piece_system(
 
 fn highlight_selected_system(
 	selected: Res<SelectedPiece>,
-	mut highlight_square: Query<(&HighlightSquare, &mut Transform)>,
+	mut highlight_square: Query<(&HighlightSquare, &mut Transform)>
 ) -> Result<()> {
 	let mut highlight_square = highlight_square.get_single_mut()?;
 	if let Some(selected) = selected.0 {
@@ -399,7 +399,7 @@ fn highlight_selected_system(
 
 fn highlight_moved_system(
 	mut moved_square: Query<(&MovedSquare, &mut Transform)>,
-	mut ev_move: EventReader<MoveEvent>,
+	mut ev_move: EventReader<MoveEvent>
 ) -> Result<()> {
 	let mut moved_square = moved_square.get_single_mut()?;
 	for event in ev_move.iter() {
@@ -416,7 +416,7 @@ fn highlight_moved_system(
 
 fn highlight_hover_system(
 	mut hover_square: Query<(&HoverSquare, &mut Transform)>,
-	mut ev_move: EventReader<HoverEvent>,
+	mut ev_move: EventReader<HoverEvent>
 ) -> Result<()> {
 	let mut hover_square = hover_square.get_single_mut()?;
 	for event in ev_move.iter() {
@@ -437,7 +437,7 @@ fn highlight_legal_moves_system(
 	mut commands: Commands,
 	mut materials: ResMut<Assets<ColorMaterial>>,
 	mut meshes: ResMut<Assets<Mesh>>,
-	mut markers: Query<(&LegalMoveMarker, Entity)>,
+	mut markers: Query<(&LegalMoveMarker, Entity)>
 ) {
 	for event in ev_legal.iter() {
 		if let Some(legal_moves) = &event.0 {
@@ -455,7 +455,7 @@ fn highlight_legal_moves_system(
 							translation: Vec3::new(
 								Coord::to_win(col + 1, -0.5),
 								Coord::to_win(row + 1, -0.5),
-								10.0,
+								10.0
 							),
 							scale: Vec3::new(0.25, 0.25, 0.0),
 							..default()

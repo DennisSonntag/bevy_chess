@@ -23,7 +23,7 @@ pub mod macros {
 		};
 		($commands:expr, $color: expr, $size: expr, $component:expr) => {
 			$commands
-				.spawn((SpriteBundle {
+				.spawn(SpriteBundle {
 					transform: Transform {
 						translation: $size,
 						scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
@@ -34,30 +34,29 @@ pub mod macros {
 						..default()
 					},
 					..default()
-				},))
+				})
 				.insert($component);
 		};
 	}
 	macro_rules! spawn_text_bundle {
 		($commands:expr, $text: expr, $color: expr, $size: expr,  $style: expr,$component:expr) => {
-			$commands.spawn((
-				Text2dBundle {
+			$commands
+				.spawn(Text2dBundle {
 					text: Text {
 						sections: vec![TextSection::new(
 							String::from($text),
 							TextStyle {
 								color: $color,
 								..$style
-							},
+							}
 						)],
 						..default()
 					},
 					transform: Transform::from_translation($size),
 					text_anchor: Anchor::Center,
 					..default()
-				},
-				$component,
-			));
+				})
+				.insert($component);
 		};
 		($commands:expr, $text: expr, $color: expr, $size: expr,  $style: expr) => {
 			$commands.spawn(Text2dBundle {
@@ -67,7 +66,7 @@ pub mod macros {
 						TextStyle {
 							color: $color,
 							..$style
-						},
+						}
 					)],
 					..default()
 				},
@@ -83,12 +82,12 @@ pub mod macros {
 
 pub fn error_handler(In(result): In<Result<()>>) {
 	if let Err(err) = result {
-		println!("encountered an error {err:?}");
+		eprintln!("encountered an error {err:?}");
 	}
 }
 
 pub fn option_handler(In(result): In<Option<()>>) {
 	if let Some(err) = result {
-		println!("encountered an None {err:?}");
+		eprintln!("encountered an None {err:?}");
 	}
 }

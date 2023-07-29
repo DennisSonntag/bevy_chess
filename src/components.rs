@@ -1,8 +1,9 @@
 #![allow(dead_code, unused, clippy::cast_sign_loss)]
 
+use std::{collections::HashMap, string::ToString};
+
 use anyhow::Result;
 use bevy::prelude::*;
-use std::{collections::HashMap, string::ToString};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 use crate::{BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE};
@@ -14,6 +15,7 @@ impl Coord {
 		let pos: f32 = pos.into();
 		(pos + min).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.))
 	}
+
 	pub fn to_win_piece<T: Into<f32>>(pos: T) -> f32 {
 		let pos: f32 = pos.into();
 		(pos).mul_add(SQUARE_SIZE, -(WINDOW_SIZE / 2.)) + (SQUARE_SIZE / 2.)

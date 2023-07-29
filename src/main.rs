@@ -10,18 +10,16 @@ use anyhow::Result;
 use bevy::{app::AppExit, prelude::*, sprite::Anchor, window::PresentMode};
 use bevy_prototype_lyon::prelude::*;
 use binary::{BinaryPlugin, FONT_HANDLE, PIECE_HANDLE};
+use chrono::Duration;
 use components::{
 	BlackTimer, BoardResource, Coord, GameTimers, HighlightSquare, HoverEvent, HoverSquare,
 	LegalMoveEvent, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Position, SelectedPiece,
-	TakeEvent, WhiteTimer,
+	TakeEvent, WhiteTimer
 };
-use util::{error_handler, option_handler, BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE};
-
+use num_traits::cast::ToPrimitive;
 use piece::PiecePlugin;
 use sounds::SoundPlugin;
-
-use chrono::Duration;
-use num_traits::cast::ToPrimitive;
+use util::{error_handler, option_handler, BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE};
 
 use crate::util::macros::{spawn_sprite_bundle, spawn_text_bundle};
 
@@ -65,16 +63,16 @@ fn main() {
 				setup_camera,
 				spawn_board_system.pipe(option_handler),
 				spawn_piece_sprites_system.pipe(error_handler),
-				spawn_timers_system,
-			),
+				spawn_timers_system
+			)
 		)
 		.add_systems(
 			Update,
 			(
 				update_white_timer_system.pipe(error_handler),
 				update_black_timer_system.pipe(error_handler),
-				countdown,
-			),
+				countdown
+			)
 		)
 		.add_plugins(SoundPlugin)
 		.add_plugins(PiecePlugin)
@@ -90,7 +88,7 @@ fn spawn_board_system(mut commands: Commands) -> Option<()> {
 	let text_style = TextStyle {
 		font: FONT_HANDLE.typed(),
 		font_size: 20.0,
-		color: Color::BLACK,
+		color: Color::BLACK
 	};
 
 	for row in 1..=BOARD_SIZE {
@@ -146,25 +144,23 @@ fn spawn_board_system(mut commands: Commands) -> Option<()> {
 fn spawn_piece_sprites_system(
 	mut commands: Commands,
 	mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-	board: ResMut<BoardResource>,
+	board: ResMut<BoardResource>
 ) -> Result<()> {
-	let texture_handle = PIECE_HANDLE.typed();
-
 	for (index, piece) in board.0.iter().enumerate() {
 		if let Some(piece) = piece {
 			let row = i8::try_from(index)? / BOARD_SIZE;
 			let col = i8::try_from(index)? % BOARD_SIZE;
 
 			let texture_atlas = TextureAtlas::from_grid(
-				texture_handle.clone(),
+				PIECE_HANDLE.typed(),
 				Vec2::new(333.3, 333.3),
 				2,
 				1,
 				None,
 				Some(Vec2::new(
 					(piece.piece_type as i32) as f32 * 333.3,
-					(piece.color as i32) as f32 * 333.3,
-				)),
+					(piece.color as i32) as f32 * 333.3
+				))
 			);
 			let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
@@ -175,7 +171,7 @@ fn spawn_piece_sprites_system(
 						translation: Vec3::new(
 							Coord::to_win_piece(col),
 							Coord::to_win_piece(row),
-							2.0,
+							2.0
 						),
 						scale: Vec3::splat(WINDOW_SIZE / 2500.),
 						..default()
@@ -187,7 +183,7 @@ fn spawn_piece_sprites_system(
 					piece_type: piece.piece_type,
 					color: piece.color,
 					amount_moved: piece.amount_moved,
-					pos: Position::new(row, col),
+					pos: Position::new(row, col)
 				});
 		}
 	}
@@ -224,7 +220,7 @@ fn spawn_piece_sprites_system(
 				..default()
 			},
 			Fill::color(Color::NONE),
-			Stroke::new(Color::WHITE, 0.09),
+			Stroke::new(Color::WHITE, 0.09)
 		))
 		.insert(HoverSquare);
 	Ok(())
@@ -239,7 +235,7 @@ fn spawn_timers_system(mut commands: Commands) {
 
 	spawn_text_bundle!(
 		commands,
-		"00:00".to_string(),
+		String::from("00:00"),
 		Color::WHITE,
 		Vec3::new(50. - (WINDOW_SIZE / 2.), -30. - (WINDOW_SIZE / 2.), 2.,),
 		text_style.clone(),
@@ -247,7 +243,7 @@ fn spawn_timers_system(mut commands: Commands) {
 	);
 	spawn_text_bundle!(
 		commands,
-		"00:00".to_string(),
+		String::from("00:00"),
 		Color::WHITE,
 		Vec3::new(50. - (WINDOW_SIZE / 2.), 30. + (WINDOW_SIZE / 2.), 2.,),
 		text_style,
@@ -266,7 +262,7 @@ fn format_elapsed_time(seconds: u64) -> String {
 
 fn update_white_timer_system(
 	timers: Res<GameTimers>,
-	mut white_timer: Query<&mut Text, With<WhiteTimer>>,
+	mut white_timer: Query<&mut Text, With<WhiteTimer>>
 ) -> Result<()> {
 	let mut text = white_timer.get_single_mut()?;
 	let seconds = timers.white.duration().as_secs() - timers.white.elapsed().as_secs();
@@ -278,7 +274,7 @@ fn update_white_timer_system(
 
 fn update_black_timer_system(
 	timers: Res<GameTimers>,
-	mut black_timer: Query<&mut Text, With<BlackTimer>>,
+	mut black_timer: Query<&mut Text, With<BlackTimer>>
 ) -> Result<()> {
 	let mut text = black_timer.get_single_mut()?;
 	let seconds = timers.black.duration().as_secs() - timers.black.elapsed().as_secs();
@@ -290,7 +286,7 @@ fn update_black_timer_system(
 fn countdown(
 	time: Res<Time>,
 	mut countdown: ResMut<GameTimers>,
-	mut ev_exit: EventWriter<AppExit>,
+	mut ev_exit: EventWriter<AppExit>
 ) {
 	if countdown.white.finished() {
 		println!("Black WINS!!!");
