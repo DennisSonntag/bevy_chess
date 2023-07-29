@@ -6,6 +6,7 @@
 	clippy::needless_pass_by_value
 )]
 
+use anyhow::Result;
 use bevy::{app::AppExit, prelude::*, sprite::Anchor, window::PresentMode};
 use bevy_prototype_lyon::prelude::*;
 use binary::{BinaryPlugin, FONT_HANDLE, PIECE_HANDLE};
@@ -14,6 +15,7 @@ use components::{
 	LegalMoveEvent, MoveData, MoveEvent, MovedSquare, Piece, PieceColor, Position, SelectedPiece,
 	TakeEvent, WhiteTimer,
 };
+use util::{error_handler, BOARD_SIZE, SQUARE_SIZE, WINDOW_SIZE, option_handler};
 
 use std::env;
 
@@ -23,16 +25,13 @@ use sounds::SoundPlugin;
 use chrono::Duration;
 use num_traits::cast::ToPrimitive;
 
+use crate::util::macros::{spawn_sprite_bundle, spawn_text_bundle};
+
 mod binary;
 mod components;
 mod piece;
 mod sounds;
-
-const WINDOW_SIZE: f32 = 600.;
-
-const SQUARE_SIZE: f32 = WINDOW_SIZE / 8.;
-
-const BOARD_SIZE: i8 = 8;
+mod util;
 
 fn main() {
 	#[cfg(not(debug_assertions))]
@@ -66,8 +65,8 @@ fn main() {
 			Startup,
 			(
 				setup_camera,
-				spawn_board_system,
-				spawn_piece_sprites_system,
+				spawn_board_system.pipe(option_handler),
+				spawn_piece_sprites_system.pipe(error_handler),
 				spawn_timers_system,
 			),
 		)
@@ -89,7 +88,7 @@ fn setup_camera(mut commands: Commands, mut countdown: ResMut<GameTimers>) {
 	countdown.black.pause();
 }
 
-fn spawn_board_system(mut commands: Commands) {
+fn spawn_board_system(mut commands: Commands) -> Option<()> {
 	let text_style = TextStyle {
 		font: FONT_HANDLE.typed(),
 		font_size: 20.0,
@@ -109,78 +108,54 @@ fn spawn_board_system(mut commands: Commands) {
 			} else {
 				Color::rgb_u8(162, 110, 91)
 			};
-
-			commands.spawn((SpriteBundle {
-				transform: Transform {
-					translation: Vec3::new(Coord::to_win(col, -0.5), Coord::to_win(row, -0.5), 0.0),
-					scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
-					..default()
-				},
-				sprite: Sprite { color, ..default() },
-				..default()
-			},));
-
+			spawn_sprite_bundle!(
+				commands,
+				color,
+				Vec3::new(Coord::to_win(col, -0.5), Coord::to_win(row, -0.5), 0.0)
+			);
 			if row == 1 {
-				commands.spawn((Text2dBundle {
-					text: Text {
-						sections: vec![TextSection::new(
-							format!(
-								"{}",
-								char::from_u32(96 + col as u32)
-									.expect("could not cast number to char")
-							),
-							TextStyle {
-								color: color_alternate,
-								..text_style.clone()
-							},
-						)],
-						..default()
-					},
-					transform: Transform::from_translation(Vec3::new(
+				spawn_text_bundle!(
+					commands,
+					char::from_u32(96 + col as u32)?.to_string(),
+					color_alternate,
+					Vec3::new(
 						Coord::to_win(col, -1.) + 67.,
 						Coord::to_win(row, -1.) + 67.,
 						1.,
-					)),
-					text_anchor: Anchor::Center,
-					..default()
-				},));
+					),
+					text_style.clone()
+				);
 			}
 			if col == 1 {
-				commands.spawn((Text2dBundle {
-					text: Text {
-						sections: vec![TextSection::new(
-							format!("{row}"),
-							TextStyle {
-								color: color_alternate,
-								..text_style.clone()
-							},
-						)],
-						..default()
-					},
-					transform: Transform::from_translation(Vec3::new(
+				spawn_text_bundle!(
+					commands,
+					format!("{row}"),
+					color_alternate,
+					Vec3::new(
 						Coord::to_win(col, -1.) + 10.,
 						Coord::to_win(row, -1.) + 10.,
 						1.,
-					)),
-					text_anchor: Anchor::Center,
-					..default()
-				},));
+					),
+					text_style.clone()
+				);
 			}
 		}
 	}
+
+	Some(())
 }
 
 fn spawn_piece_sprites_system(
 	mut commands: Commands,
 	mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 	board: ResMut<BoardResource>,
-) {
+) -> Result<()> {
 	let texture_handle = PIECE_HANDLE.typed();
 
 	for (index, piece) in board.0.iter().enumerate() {
 		if let Some(piece) = piece {
-			let row = i8::try_from(index).expect("could not cast index to i8") / BOARD_SIZE;
-			let col = i8::try_from(index).expect("could not cast index to i8") % BOARD_SIZE;
+			let row = i8::try_from(index)? / BOARD_SIZE;
+			let col = i8::try_from(index)? % BOARD_SIZE;
 
 			let texture_atlas = TextureAtlas::from_grid(
 				texture_handle.clone(),
@@ -219,35 +194,19 @@ fn spawn_piece_sprites_system(
 		}
 	}
 
-	commands
-		.spawn((SpriteBundle {
-			transform: Transform {
-				translation: Vec3::new(Coord::to_win(0.5, 0.), Coord::to_win(0.5, 0.), 1.0),
-				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
-				..default()
-			},
-			sprite: Sprite {
-				color: Color::rgba_u8(255, 255, 0, 100),
-				..default()
-			},
-			..default()
-		},))
-		.insert(HighlightSquare);
+	spawn_sprite_bundle!(
+		commands,
+		Color::rgba_u8(255, 255, 0, 100),
+		Vec3::new(Coord::to_win(0.5, 0.), Coord::to_win(0.5, 0.), 1.0),
+		HighlightSquare
+	);
 
-	commands
-		.spawn((SpriteBundle {
-			transform: Transform {
-				translation: Vec3::new(Coord::to_win(-0.5, 0.), Coord::to_win(-0.5, 0.), 1.0),
-				scale: Vec3::new(SQUARE_SIZE, SQUARE_SIZE, 0.0),
-				..default()
-			},
-			sprite: Sprite {
-				color: Color::rgba_u8(200, 115, 0, 100),
-				..default()
-			},
-			..default()
-		},))
-		.insert(MovedSquare);
+	spawn_sprite_bundle!(
+		commands,
+		Color::rgba_u8(200, 115, 0, 100),
+		Vec3::new(Coord::to_win(-0.5, 0.), Coord::to_win(-0.5, 0.), 1.0),
+		MovedSquare
+	);
 
 	// Hover ------------------------------------------------
 	let shape = shapes::RegularPolygon {
@@ -270,58 +229,32 @@ fn spawn_piece_sprites_system(
 			Stroke::new(Color::WHITE, 0.09),
 		))
 		.insert(HoverSquare);
+	Ok(())
 }
 
 fn spawn_timers_system(mut commands: Commands, asset_server: Res<AssetServer>) {
 	let text_style = TextStyle {
 		font: FONT_HANDLE.typed(),
 		font_size: 20.0,
-		color: Color::BLACK,
+		..default()
 	};
-	commands.spawn((
-		Text2dBundle {
-			text: Text {
-				sections: vec![TextSection::new(
-					String::from("00:00"),
-					TextStyle {
-						color: Color::WHITE,
-						..text_style.clone()
-					},
-				)],
-				..default()
-			},
-			transform: Transform::from_translation(Vec3::new(
-				50. - (WINDOW_SIZE / 2.),
-				-30. - (WINDOW_SIZE / 2.),
-				2.,
-			)),
-			text_anchor: Anchor::Center,
-			..default()
-		},
-		WhiteTimer,
-	));
-	commands.spawn((
-		Text2dBundle {
-			text: Text {
-				sections: vec![TextSection::new(
-					String::from("00:00"),
-					TextStyle {
-						color: Color::WHITE,
-						..text_style
-					},
-				)],
-				..default()
-			},
-			transform: Transform::from_translation(Vec3::new(
-				50. - (WINDOW_SIZE / 2.),
-				30. + (WINDOW_SIZE / 2.),
-				2.,
-			)),
-			text_anchor: Anchor::Center,
-			..default()
-		},
-		BlackTimer,
-	));
+
+	spawn_text_bundle!(
+		commands,
+		"00:00".to_string(),
+		Color::WHITE,
+		Vec3::new(50. - (WINDOW_SIZE / 2.), -30. - (WINDOW_SIZE / 2.), 2.,),
+		text_style.clone(),
+		WhiteTimer
+	);
+	spawn_text_bundle!(
+		commands,
+		"00:00".to_string(),
+		Color::WHITE,
+		Vec3::new(50. - (WINDOW_SIZE / 2.), 30. + (WINDOW_SIZE / 2.), 2.,),
+		text_style,
+		BlackTimer
+	);
 }
 
 fn format_elapsed_time(seconds: u64) -> String {
@@ -336,20 +269,22 @@ fn update_white_timer_system(
 	timers: Res<GameTimers>,
 	mut white_timer: Query<&mut Text, With<WhiteTimer>>,
 ) {
-	let mut text = white_timer.get_single_mut().unwrap();
-	let seconds = timers.white.duration().as_secs() - timers.white.elapsed().as_secs();
+	if let Ok(mut text) = white_timer.get_single_mut() {
+		let seconds = timers.white.duration().as_secs() - timers.white.elapsed().as_secs();
 
-	text.sections[0].value = format_elapsed_time(seconds);
+		text.sections[0].value = format_elapsed_time(seconds);
+	}
 }
 
 fn update_black_timer_system(
 	timers: Res<GameTimers>,
 	mut black_timer: Query<&mut Text, With<BlackTimer>>,
 ) {
-	let mut text = black_timer.get_single_mut().unwrap();
-	let seconds = timers.black.duration().as_secs() - timers.black.elapsed().as_secs();
+	if let Ok(mut text) = black_timer.get_single_mut() {
+		let seconds = timers.black.duration().as_secs() - timers.black.elapsed().as_secs();
 
-	text.sections[0].value = format_elapsed_time(seconds);
+		text.sections[0].value = format_elapsed_time(seconds);
+	}
 }
 
 fn countdown(

@@ -34,7 +34,7 @@ pub const MOVE_SOUND_HANDLE: HandleUntyped =
 pub struct BinaryPlugin;
 
 fn font_loader(bytes: &[u8], _: Cow<str>) -> Font {
-	Font::try_from_bytes(bytes.to_vec()).unwrap()
+	Font::try_from_bytes(bytes.to_vec()).expect("could not load font")
 }
 
 fn ogg_loader(bytes: &[u8], _: Cow<str>) -> AudioSource {
@@ -50,7 +50,7 @@ fn image_loader(bytes: &[u8], _: Cow<str>) -> Image {
 		CompressedImageFormats::NONE,
 		true,
 	)
-	.unwrap();
+	.expect("could not load image");
 
 	let mut image_descriptor = ImageSampler::nearest_descriptor();
 	image_descriptor.label = Some("pieces_image");

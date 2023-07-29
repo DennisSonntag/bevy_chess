@@ -17,8 +17,9 @@ opt-level = 3
 
 [dependencies]
 bevy_prototype_lyon = "0.9.0"
-strum = { version = "0.25", features = ["derive"] }
+strum = { version = "0.25.0", features = ["derive"] }
 num-traits = "0.2.16"
+anyhow = "1.0.72"
 
 
 [dependencies.chrono]
@@ -54,17 +55,3 @@ features = [
   # Development/Debug features:
   # "dynamic_linking", # Dynamic linking for faster compile-times
 ]
-
-# [build-dependencies]
-# bevy_prototype_lyon = "0.9.0"
-# strum = { version = "0.25", features = ["derive"] }
-# num-traits = "0.2.16"
-#
-#
-# [build-dependencies.chrono]
-# version = "0.4.26"
-# default-features = false
-# features = [
-# 	"std"
-# ]
-
